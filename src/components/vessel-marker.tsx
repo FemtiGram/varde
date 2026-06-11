@@ -6,7 +6,10 @@ import type { EventSeverity, SourceType } from "@/lib/types";
  *  - stationary AIS      → diamond (no meaningful heading)
  *  - non-AIS sensor      → dashed hollow circle with centre dot (unknown identity)
  *  - active event        → severity ring around the glyph (+ label on the map)
- *  - selected            → outer selection ring
+ *  - selected            → filled halo + solid ring + glow
+ * Colour vocabulary: green = normal traffic, red/amber/blue = severity,
+ * cyan = selection, near-white dashed = unknown contact. The same in both
+ * map modes, so the symbols stay learnable.
  * Produced as an SVG string so MapLibre DOM markers and React (design system)
  * share the exact same artwork.
  */
@@ -34,7 +37,9 @@ export function vesselGlyphSvg({
   selected,
   size = 26,
 }: VesselGlyphOptions): string {
-  const fill = severity ? SEVERITY_VARS[severity] : "var(--muted-foreground)";
+  // Normal traffic is green ("uneventful") so it stays visible on the
+  // greyscale chart; severity colours take over when an event is active
+  const fill = severity ? SEVERITY_VARS[severity] : "var(--contact-ais)";
   const rotation = moving && headingDeg != null ? headingDeg : 0;
   let shape: string;
   if (source !== "ais") {

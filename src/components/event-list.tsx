@@ -10,6 +10,7 @@ import { useAppStore } from "@/lib/store";
 import type { EventSeverity, OperatorEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DecisionActions } from "./decision-actions";
+import { ScoreFactors } from "./score-factors";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -291,26 +292,12 @@ export function EventRow({
       )}
 
       {selected && (
-        <div className="mt-2 rounded-sm border border-border/60 bg-background/50 px-2 py-1.5">
-          <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Hvorfor prioritert slik
-          </span>
-          <ul className="mt-1 flex flex-col gap-0.5">
-            {event.factors.map((f) => (
-              <li
-                key={f.id}
-                className="flex items-baseline justify-between gap-2 text-xs"
-              >
-                <span className="text-muted-foreground">{f.label}</span>
-                <span className="font-mono tabular-nums">+{f.points}</span>
-              </li>
-            ))}
-            <li className="mt-0.5 flex items-baseline justify-between gap-2 border-t border-border/60 pt-0.5 text-xs font-medium">
-              <span>Sum</span>
-              <span className="font-mono tabular-nums">{event.score}</span>
-            </li>
-          </ul>
-        </div>
+        <ScoreFactors
+          factors={event.factors}
+          score={event.score}
+          variant="compact"
+          className="mt-2"
+        />
       )}
       {(selected || event.decision !== "none") && (
         <DecisionActions event={event} className="mt-2" />

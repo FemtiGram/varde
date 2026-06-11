@@ -49,6 +49,7 @@ const T: Record<string, number[]> = {
   selection: oklchToLinearRgb(0.85, 0.12, 195),
   infra: oklchToLinearRgb(0.74, 0.16, 330),
   "contact-unknown": oklchToLinearRgb(0.95, 0.01, 250),
+  "contact-ais": oklchToLinearRgb(0.78, 0.1, 155),
 };
 
 const checks: [string, string, string, number[]?][] = [
@@ -71,6 +72,7 @@ const checks: [string, string, string, number[]?][] = [
   ["primary-foreground", "primary", "primærknapp"],
   ["infra", "background", "korridoretikett 10px"],
   ["contact-unknown", "background", "ukjent kontakt-markør"],
+  ["contact-ais", "background", "normal trafikk-markør (grafikk)"],
 ];
 
 let failures = 0;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DecisionActions } from "@/components/decision-actions";
+import { ScoreFactors } from "@/components/score-factors";
 import { EventRow } from "@/components/event-list";
 import { StatusPill } from "@/components/status-pill";
 import { VesselGlyph } from "@/components/vessel-marker";
@@ -35,6 +36,7 @@ const COLOR_TOKENS = [
   { name: "--status-warning-foreground", on: "--status-warning" },
   { name: "--infra", on: "--background" },
   { name: "--contact-unknown", on: "--background" },
+  { name: "--contact-ais", on: "--background" },
 ] as const;
 
 /** Resolve any CSS colour to sRGB bytes via canvas. */
@@ -122,7 +124,7 @@ const UX_LAWS = [
     name: "Millers lov",
     principle: "Arbeidsminnet holder rundt 7±2 enheter — gruppér innhold.",
     applied:
-      "Køen er delt i «Krever vurdering» og «Håndtert», tavlen i fire kolonner, og scorefaktorene vises som en kort gruppert liste.",
+      "Køen er delt i «Krever vurdering» og «Håndtert», tavlen i fire kolonner, og scorefaktorene grupperes i tre bidrag (grunnscore, kontekst, atferd) med en proporsjonslinje.",
   },
   {
     name: "Von Restorff-effekten",
@@ -345,7 +347,9 @@ export default function DesignSystemPage() {
           <p className="text-sm text-muted-foreground">
             Status kodes med form først, farge etterpå: pil = i fart (rotert
             mot kurs), diamant = stilleliggende, stiplet ring = aktiv hendelse,
-            hel ring = valgt.
+            fylt glorie + hel ring = valgt. Fargespråket er fast i begge
+            kartmoduser: grønn = normal trafikk, rød/gul/blå = alvorsgrad,
+            cyan = valgt, nesten hvit stiplet = kontakt uten AIS.
           </p>
           <div className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-3">
             <MarkerSample label="I fart, normal">
@@ -426,6 +430,21 @@ export default function DesignSystemPage() {
           </h3>
           <div className="rounded-md border bg-card p-2">
             <DemoEventRow />
+          </div>
+
+          <h3 className="mt-2 text-sm font-medium text-muted-foreground">
+            Scorefaktorer (bidragslinje + chips)
+          </h3>
+          <div className="rounded-md border p-4">
+            <ScoreFactors
+              factors={[...SAMPLE_EVENT.factors]}
+              score={SAMPLE_EVENT.score}
+              variant="full"
+            />
+            <p className="mt-3 text-xs text-muted-foreground">
+              Kompaktvarianten (topp 3 + «flere») brukes i hendelseskøen — se
+              raden over.
+            </p>
           </div>
 
           <h3 className="mt-2 text-sm font-medium text-muted-foreground">

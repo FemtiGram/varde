@@ -52,6 +52,7 @@
   --color-selection: var(--selection-token);
   --color-infra: var(--infra);
   --color-contact-unknown: var(--contact-unknown);
+  --color-contact-ais: var(--contact-ais);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -114,6 +115,8 @@
   --infra: oklch(0.74 0.16 330);
   /* Non-AIS contact (unknown identity) — near-white; shape (dashed hollow circle) carries the meaning */
   --contact-unknown: oklch(0.95 0.01 250);
+  /* Normal AIS traffic — desaturated green ("uneventful"), same in both map modes */
+  --contact-ais: oklch(0.78 0.1 155);
 }
 
 @layer base {
