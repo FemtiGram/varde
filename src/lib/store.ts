@@ -39,8 +39,17 @@ interface AppState {
   focusNonce: number;
   /** Infrastructure layer (cable corridors) visibility */
   showInfrastructure: boolean;
+  /** Active workspace view: operational map or the decision board */
+  view: "map" | "board";
+  /** Operator-adjustable height of the contact bottom sheet (px) */
+  sheetHeight: number;
+  /** Greyscale basemap — desaturated chart so vessels and overlays pop */
+  mapGreyscale: boolean;
 
   setMode: (mode: DataMode) => void;
+  setView: (view: "map" | "board") => void;
+  setSheetHeight: (px: number) => void;
+  setMapGreyscale: (on: boolean) => void;
   setLiveStatus: (status: LiveStatus) => void;
   setShowInfrastructure: (show: boolean) => void;
   restartScenario: () => void;
@@ -134,6 +143,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedEventId: null,
   focusNonce: 0,
   showInfrastructure: true,
+  view: "map",
+  sheetHeight: 300,
+  mapGreyscale: true,
+
+  setView: (view) => set({ view }),
+
+  setSheetHeight: (px) =>
+    set({ sheetHeight: Math.min(520, Math.max(220, Math.round(px))) }),
+
+  setMapGreyscale: (mapGreyscale) => set({ mapGreyscale }),
 
   setMode: (mode) => {
     if (mode === get().mode) return;

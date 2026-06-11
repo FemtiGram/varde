@@ -176,7 +176,7 @@ export function MapView() {
         el.setAttribute("aria-hidden", "true");
         el.className = "corridor-label";
         el.style.cssText =
-          "font: 500 10px var(--font-geist-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #f0c2e8; background: rgba(34,22,32,0.74); padding: 2px 6px; border: 1px dashed rgba(217,107,200,0.55); border-radius: 3px; pointer-events: none;";
+          "font: 500 12px var(--font-geist-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #f0c2e8; background: rgba(34,22,32,0.74); padding: 2px 6px; border: 1px dashed rgba(217,107,200,0.55); border-radius: 3px; pointer-events: none;";
         corridorLabelsRef.current.push(
           new maplibregl.Marker({ element: el, anchor: "center" })
             .setLngLat(polyCentroid(corridor.polygon))
@@ -216,7 +216,7 @@ export function MapView() {
         el.textContent = zone.name;
         el.setAttribute("aria-hidden", "true");
         el.style.cssText =
-          "font: 500 10px var(--font-geist-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #bfe8f2; background: rgba(20,28,34,0.72); padding: 2px 6px; border: 1px solid rgba(94,193,216,0.45); border-radius: 3px; pointer-events: none;";
+          "font: 500 12px var(--font-geist-mono); letter-spacing: 0.08em; text-transform: uppercase; color: #bfe8f2; background: rgba(20,28,34,0.72); padding: 2px 6px; border: 1px solid rgba(94,193,216,0.45); border-radius: 3px; pointer-events: none;";
         new maplibregl.Marker({ element: el, anchor: "center" })
           .setLngLat(polyCentroid(zone.polygon))
           .addTo(map);
@@ -264,7 +264,19 @@ export function MapView() {
         focusNonce,
         nowMs,
         showInfrastructure,
+        mapGreyscale,
       } = useAppStore.getState();
+
+      // Basemap greyscale: a fully desaturated chart lets markers, zones and
+      // corridors carry all the colour
+      if (map.getLayer("sjokart")) {
+        map.setPaintProperty(
+          "sjokart",
+          "raster-saturation",
+          mapGreyscale ? -1 : -0.15
+        );
+        map.setPaintProperty("sjokart", "raster-contrast", mapGreyscale ? 0.05 : 0);
+      }
 
       // Infrastructure layer visibility
       const infraVisibility = showInfrastructure ? "visible" : "none";
@@ -342,20 +354,21 @@ export function MapView() {
 
         if (entry.key !== key) {
           entry.key = key;
+          entry.el.classList.toggle("vessel-marker--selected", selected);
           const glyph = vesselGlyphSvg({
             source: contact.source,
             moving,
             headingDeg: heading,
             severity,
             selected,
-            size: severity || selected || isSensor ? 30 : 24,
+            size: selected ? 36 : severity || isSensor ? 30 : 24,
           });
           const label = showLabel
-            ? `<span style="font: 500 10px var(--font-geist-mono); color: ${
+            ? `<span style="font: ${selected ? 600 : 500} 12px var(--font-geist-mono); color: ${
                 selected ? "var(--selection-token)" : "var(--foreground)"
-              }; background: rgba(20,28,34,0.78); padding: 1px 5px; border-radius: 3px; white-space: nowrap;${
+              }; background: rgba(20,28,34,0.85); padding: 1px 5px; border-radius: 3px; white-space: nowrap;${
                 isSensor ? "border: 1px dashed var(--contact-unknown);" : ""
-              }">${name}</span>`
+              }${selected ? "border: 1px solid var(--selection-token);" : ""}">${name}</span>`
             : "";
           entry.el.innerHTML = `<span style="opacity:${stale && !isSensor ? 0.45 : 1}; display:block; line-height:0;">${glyph}</span>${label}`;
           entry.el.setAttribute(

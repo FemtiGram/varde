@@ -3,17 +3,19 @@
 import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/lib/store";
 
-/** Map layer toggles — infrastructure context on demand, not clutter. */
+/** Map layer toggles — infrastructure context and basemap treatment. */
 export function MapLayersControl() {
   const showInfrastructure = useAppStore((s) => s.showInfrastructure);
   const setShowInfrastructure = useAppStore((s) => s.setShowInfrastructure);
+  const mapGreyscale = useAppStore((s) => s.mapGreyscale);
+  const setMapGreyscale = useAppStore((s) => s.setMapGreyscale);
 
   return (
-    <div className="absolute left-3 top-3 rounded-md border bg-card/90 px-3 py-2 backdrop-blur-sm">
-      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="absolute left-3 top-3 flex flex-col gap-2 rounded-md border bg-card/90 px-3 py-2 backdrop-blur-sm">
+      <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
         Kartlag
       </span>
-      <label className="flex cursor-pointer items-center gap-2 text-xs">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
         <Switch
           checked={showInfrastructure}
           onCheckedChange={setShowInfrastructure}
@@ -34,6 +36,19 @@ export function MapLayersControl() {
           </svg>
           Kabelkorridorer
           <span className="text-muted-foreground">(illustrativ)</span>
+        </span>
+      </label>
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <Switch
+          checked={mapGreyscale}
+          onCheckedChange={setMapGreyscale}
+          aria-label="Gråtone på sjøkartet"
+        />
+        <span>
+          Gråtonekart
+          <span className="ml-1.5 text-muted-foreground">
+            (markører bærer fargen)
+          </span>
         </span>
       </label>
     </div>

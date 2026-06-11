@@ -160,3 +160,7 @@
   outline-offset: 2px;
   border-radius: 9999px;
 }
+/* Selected contact: glow halo so the selection reads instantly on the chart */
+.vessel-marker--selected {
+  filter: drop-shadow(0 0 7px var(--selection-token));
+}

@@ -30,8 +30,8 @@ export function AppHeader() {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-3">
-      <h1 className="text-sm font-semibold tracking-[0.2em]">VARDE</h1>
-      <span className="hidden text-xs text-muted-foreground md:inline">
+      <h1 className="text-base font-semibold tracking-[0.2em]">VARDE</h1>
+      <span className="hidden text-sm text-muted-foreground md:inline">
         Maritim situasjonsoversikt · Indre Oslofjord
       </span>
 
@@ -67,7 +67,7 @@ export function AppHeader() {
         <span
           role="status"
           className={cn(
-            "flex items-center gap-1.5 text-xs",
+            "flex items-center gap-1.5 text-sm",
             mode === "live" && liveStatus !== "ok" && liveStatus !== "connecting"
               ? "text-status-warning"
               : "text-muted-foreground"
@@ -86,11 +86,11 @@ export function AppHeader() {
           />
           {statusText}
         </span>
-        <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
+        <span className="hidden font-mono text-sm text-muted-foreground sm:inline">
           {contactCount} kontakter
         </span>
         <span
-          className="font-mono text-xs tabular-nums"
+          className="font-mono text-sm tabular-nums"
           aria-label="Operasjonsklokke"
           suppressHydrationWarning
         >

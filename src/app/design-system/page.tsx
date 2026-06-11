@@ -98,6 +98,58 @@ function useTokenInfo(): TokenInfo[] {
   return tokens;
 }
 
+const UX_LAWS = [
+  {
+    name: "Jakobs lov",
+    principle:
+      "Brukere overfører forventninger fra systemer de kjenner fra før.",
+    applied:
+      "Arbeidsflaten følger konvensjonen fra operative kartsystemer: kø til venstre, kart i midten, detaljer i et bunnpanel slik kartplottere gjør det.",
+  },
+  {
+    name: "Hicks lov",
+    principle: "Beslutningstid øker med antall og kompleksitet av valg.",
+    applied:
+      "Hver hendelse har nøyaktig tre beslutninger — bekreft, avvis, eskaler — pluss angre. Aldri flere.",
+  },
+  {
+    name: "Fitts' lov",
+    principle: "Tid for å treffe et mål avhenger av avstand og størrelse.",
+    applied:
+      "Beslutningsknappene ligger i selve hendelsesraden der blikket allerede er, og hurtigtaster (B/X/E/U) fjerner avstanden helt.",
+  },
+  {
+    name: "Millers lov",
+    principle: "Arbeidsminnet holder rundt 7±2 enheter — gruppér innhold.",
+    applied:
+      "Køen er delt i «Krever vurdering» og «Håndtert», tavlen i fire kolonner, og scorefaktorene vises som en kort gruppert liste.",
+  },
+  {
+    name: "Von Restorff-effekten",
+    principle: "Det som skiller seg ut, huskes og oppdages først.",
+    applied:
+      "Bare kritiske hendelser får farget kant og tonet bakgrunn i køen; kontakter uten AIS er det eneste som tegnes med stiplet hul sirkel i kartet.",
+  },
+  {
+    name: "Seriell posisjonseffekt",
+    principle: "Det første og siste i en liste får mest oppmerksomhet.",
+    applied:
+      "Køen sorteres så høyeste prioritet alltid ligger øverst — toppen av listen er svaret på «hva trenger meg nå?».",
+  },
+  {
+    name: "Doherty-terskelen",
+    principle: "Under ~400 ms svar holder systemet brukeren i flyt.",
+    applied:
+      "Beslutninger oppdaterer lokal tilstand umiddelbart; kartfokus og listeoppdateringer skjer uten ventetid mot nett.",
+  },
+  {
+    name: "Teslers lov",
+    principle: "Kompleksitet forsvinner ikke — noen må bære den.",
+    applied:
+      "Trusselvurderingen bæres av scoringsmodellen i konfigurasjonen, ikke av operatøren. Faktorlisten viser regnskapet, operatøren tar bare stilling.",
+  },
+] as const;
+
 const SAMPLE_EVENT: Omit<OperatorEvent, "decision" | "decidedAt"> = {
   id: "demo:cable-loiter",
   type: "cable-loiter",
@@ -228,7 +280,13 @@ export default function DesignSystemPage() {
           </h2>
           <p className="text-sm text-muted-foreground">
             Geist Sans for grensesnitt, Geist Mono for data: koordinater, MMSI,
-            fart og tidsstempler.
+            fart og tidsstempler. Normaltekst er 14–16&nbsp;px; bare etiketter,
+            metadata og piller går ned til 12&nbsp;px, som er minste størrelse.
+            All tekst er under terskelen for «stor tekst», så alle tekstpar
+            måles mot AA-kravet 4.5:1. Hele paletten er revidert i{" "}
+            <span className="font-mono text-xs">scripts/wcag-audit.ts</span>;
+            statuspillene fikk nøytral mørk bakgrunn fordi tonede flater i
+            samme fargetone målte 3.3–4.3:1 og strøk.
           </p>
           <div className="flex flex-col gap-4 rounded-md border p-4">
             <div className="flex flex-col gap-2">
@@ -237,10 +295,10 @@ export default function DesignSystemPage() {
               <span className="text-sm font-medium">Aa — 14/medium · radtittel og knapper</span>
               <span className="text-sm">Aa — 14/regular · brødtekst</span>
               <span className="text-xs text-muted-foreground">
-                Aa — 12/regular · sekundærtekst
+                Aa — 12/regular · sekundærtekst og metadata
               </span>
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Aa — 11/caps · feltetiketter
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                Aa — 12/caps · feltetiketter (minste størrelse)
               </span>
             </div>
             <Separator />
@@ -396,6 +454,32 @@ export default function DesignSystemPage() {
             <Button variant="ghost">Ghost</Button>
             <Button variant="destructive">Destruktiv</Button>
           </div>
+        </section>
+
+        <Separator />
+
+        <section aria-labelledby="ds-uxlaws" className="flex flex-col gap-3">
+          <h2 id="ds-uxlaws" className="text-lg font-medium">
+            UX-prinsipper (Laws of UX)
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Prinsippene under er ikke pynt — hvert av dem peker på et konkret
+            valg i grensesnittet.
+          </p>
+          <dl className="flex flex-col divide-y rounded-md border">
+            {UX_LAWS.map((law) => (
+              <div key={law.name} className="flex flex-col gap-1 p-3">
+                <dt className="text-sm font-medium">{law.name}</dt>
+                <dd className="text-xs leading-relaxed text-muted-foreground">
+                  {law.principle}
+                </dd>
+                <dd className="text-xs leading-relaxed">
+                  <span className="font-medium text-muted-foreground">Hvor: </span>
+                  {law.applied}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         <footer className="pb-6 text-xs text-muted-foreground">

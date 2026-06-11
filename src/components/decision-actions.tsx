@@ -26,7 +26,7 @@ export function DecisionActions({
   if (event.decision !== "none") {
     return (
       <div className={cn("flex items-center gap-2", className)}>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {DECISION_LABELS[event.decision]}
         </span>
         <Button

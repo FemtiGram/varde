@@ -49,12 +49,14 @@ export function vesselGlyphSvg({
     shape = `<path d="M14 6.5 L21.5 14 L14 21.5 L6.5 14 Z" fill="${fill}" stroke="var(--background)" stroke-width="1.5" stroke-linejoin="round" />`;
   }
   const severityRing = severity
-    ? `<circle cx="14" cy="14" r="12.5" fill="none" stroke="${SEVERITY_VARS[severity]}" stroke-width="1.5" stroke-dasharray="3 2.5" />`
+    ? `<circle cx="14" cy="14" r="11" fill="none" stroke="${SEVERITY_VARS[severity]}" stroke-width="1.5" stroke-dasharray="3 2.5" />`
     : "";
+  // Selection: filled halo + solid double-weight ring — unmissable on the chart
   const selectionRing = selected
-    ? `<circle cx="14" cy="14" r="13.4" fill="none" stroke="var(--selection-token)" stroke-width="1.6" />`
+    ? `<circle cx="14" cy="14" r="13" fill="var(--selection-token)" fill-opacity="0.18" />` +
+      `<circle cx="14" cy="14" r="13" fill="none" stroke="var(--selection-token)" stroke-width="2.2" />`
     : "";
-  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" aria-hidden="true">${severityRing}${selectionRing}${shape}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" aria-hidden="true">${selectionRing}${severityRing}${shape}</svg>`;
 }
 
 /** React wrapper for the same glyph (used on the design-system page). */
