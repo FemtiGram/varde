@@ -1,4 +1,4 @@
-import type { InfrastructureCorridor, MonitoringZone } from "./types";
+import type { EventType, InfrastructureCorridor, MonitoringZone } from "./types";
 
 /**
  * All tunable parameters live here so they are easy to explain and adjust.
@@ -159,6 +159,29 @@ export const SCORING = {
     warning: 55,
   },
 } as const;
+
+/**
+ * Queue profiles (EVE-style overview tabs): named slices of the event picture
+ * for different watch tasks. `types: null` means all event types.
+ */
+export const QUEUE_PROFILES: {
+  id: string;
+  label: string;
+  types: readonly EventType[] | null;
+}[] = [
+  { id: "alt", label: "Alt", types: null },
+  {
+    id: "kabelvakt",
+    label: "Kabelvakt",
+    types: ["cable-loiter", "infra-approach"],
+  },
+  {
+    id: "morke",
+    label: "Mørke fartøy",
+    types: ["ais-gap", "ais-jump", "dark-contact"],
+  },
+  { id: "soner", label: "Soner", types: ["zone-entry", "loitering"] },
+];
 
 /**
  * Flag states frequently associated with shadow-fleet registrations (MID

@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Kbd } from "@/components/ui/kbd";
-import { CORRIDORS, ZONES } from "@/lib/config";
+import { CORRIDORS, QUEUE_PROFILES, ZONES } from "@/lib/config";
 import { EVENT_TYPE_LABELS, formatAge } from "@/lib/format";
 import { useAppStore } from "@/lib/store";
 import type { EventSeverity, OperatorEvent } from "@/lib/types";
@@ -45,6 +45,11 @@ export function EventList() {
     warning: true,
     info: true,
   });
+  // Profile = named slice of the picture for a watch task (tabs above the queue)
+  const [profileId, setProfileId] = useState("alt");
+  const profile = QUEUE_PROFILES.find((p) => p.id === profileId) ?? QUEUE_PROFILES[0];
+  const inProfile = (e: OperatorEvent) =>
+    profile.types == null || profile.types.includes(e.type);
 
   // "/" focuses the search from anywhere in the workspace
   useEffect(() => {
@@ -67,13 +72,20 @@ export function EventList() {
       String(e.mmsi ?? "").includes(q) ||
       EVENT_TYPE_LABELS[e.type].toLowerCase().includes(q) ||
       (areaName(e.zoneId) ?? "").toLowerCase().includes(q);
-    const visible = events.filter((e) => sevFilter[e.severity] && matches(e));
+    const prof =
+      QUEUE_PROFILES.find((p) => p.id === profileId) ?? QUEUE_PROFILES[0];
+    const visible = events.filter(
+      (e) =>
+        (prof.types == null || prof.types.includes(e.type)) &&
+        sevFilter[e.severity] &&
+        matches(e)
+    );
     const queue = visible.filter((e) => e.decision === "none");
     const handled = visible
       .filter((e) => e.decision !== "none")
       .sort((a, b) => (b.decidedAt ?? "").localeCompare(a.decidedAt ?? ""));
     return { queue, handled };
-  }, [events, q, sevFilter]);
+  }, [events, q, sevFilter, profileId]);
 
   // Contacts matching the query that have no matching event — find any vessel
   const contactHits = useMemo(() => {
@@ -181,6 +193,39 @@ export function EventList() {
           {queue.length} åpne
         </span>
       </header>
+      <div
+        role="radiogroup"
+        aria-label="Køprofil"
+        className="flex items-center gap-0.5 px-2 pb-1.5"
+      >
+        {QUEUE_PROFILES.map((p) => {
+          const count =
+            p.types == null
+              ? events.length
+              : events.filter((e) => p.types!.includes(e.type)).length;
+          const active = p.id === profileId;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setProfileId(p.id)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-sm px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-ring",
+                active
+                  ? "bg-accent font-medium text-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              {p.label}
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
       <div className="px-2 pb-2">
         <div className="flex items-center gap-2 rounded-md border bg-background/60 px-2 focus-within:border-ring">
           <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
@@ -213,7 +258,9 @@ export function EventList() {
               ["info", "Info", "border-status-info/50 text-status-info"],
             ] as [EventSeverity, string, string][]
           ).map(([sev, label, activeClass]) => {
-            const count = events.filter((e) => e.severity === sev).length;
+            const count = events.filter(
+              (e) => inProfile(e) && e.severity === sev
+            ).length;
             const active = sevFilter[sev];
             return (
               <button
@@ -245,9 +292,11 @@ export function EventList() {
         >
           {ordered.length === 0 && contactHits.length === 0 && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              {q === ""
-                ? "Ingen aktive hendelser i området."
-                : `Ingen treff på «${query}».`}
+              {q !== ""
+                ? `Ingen treff på «${query}».`
+                : profile.types != null
+                  ? `Ingen hendelser i profilen «${profile.label}».`
+                  : "Ingen aktive hendelser i området."}
             </p>
           )}
 
