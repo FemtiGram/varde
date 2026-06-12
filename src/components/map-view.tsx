@@ -13,6 +13,7 @@ import {
 import { bearingDegrees, haversineMetres, projectPosition } from "@/lib/geo";
 import { useAppStore } from "@/lib/store";
 import type { Contact, EventSeverity } from "@/lib/types";
+import { projectedCorridorEntry } from "@/lib/events";
 import { formatClockShort } from "@/lib/format";
 import { shipTypeLabel } from "@/lib/ship-types";
 import { vesselGlyphSvg } from "./vessel-marker";
@@ -66,6 +67,7 @@ export function MapView() {
   const measuring = useAppStore((s) => s.measuring);
   /** Set while measure mode is active so marker clicks snap the EBL to vessels */
   const measureClickRef = useRef<((lngLat: [number, number]) => void) | null>(null);
+  const interceptMarkerRef = useRef<maplibregl.Marker | null>(null);
 
   // Map bootstrap
   useEffect(() => {
@@ -670,6 +672,47 @@ export function MapView() {
               }
             : { type: "FeatureCollection", features: [] }
         );
+      }
+
+      // Predicted intercept: ✕ where the selected contact's projection first
+      // enters a corridor, labelled with time-to-entry
+      {
+        const sel =
+          selectedContactId != null ? contacts[selectedContactId] : undefined;
+        const sog = sel?.latest.speedOverGround ?? null;
+        const course =
+          sel?.latest.courseOverGround ?? sel?.latest.trueHeading ?? null;
+        const entry =
+          sel && sog != null && course != null && sog >= THRESHOLDS.projectionMinSpeedKnots
+            ? projectedCorridorEntry(
+                sel.latest.longitude,
+                sel.latest.latitude,
+                course,
+                sog
+              )
+            : null;
+        if (entry) {
+          if (!interceptMarkerRef.current) {
+            const el = document.createElement("div");
+            el.className = "intercept-marker";
+            el.setAttribute("aria-hidden", "true");
+            interceptMarkerRef.current = new maplibregl.Marker({
+              element: el,
+              anchor: "center",
+            })
+              .setLngLat(entry.point)
+              .addTo(map);
+          } else {
+            interceptMarkerRef.current.setLngLat(entry.point);
+          }
+          interceptMarkerRef.current.getElement().innerHTML =
+            `<span style="display:flex; align-items:center; gap:4px;">` +
+            `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2 L12 12 M12 2 L2 12" stroke="#1d2630" stroke-width="3.5" stroke-linecap="round"/><path d="M2 2 L12 12 M12 2 L2 12" stroke="var(--status-warning)" stroke-width="1.8" stroke-linecap="round"/></svg>` +
+            `<span style="font: 600 12px var(--font-geist-mono); color: var(--foreground); background: rgba(20,28,34,0.88); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); white-space: nowrap;">~${entry.minutes} min</span></span>`;
+        } else if (interceptMarkerRef.current) {
+          interceptMarkerRef.current.remove();
+          interceptMarkerRef.current = null;
+        }
       }
 
       // List/board/sheet-driven focus: fly close and centre the contact in

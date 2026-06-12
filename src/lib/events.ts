@@ -334,6 +334,31 @@ function detectCableLoiter(contact: Contact, now: Date): Derived[] {
 }
 
 /**
+ * First projected entry into a corridor for a course/speed (dead reckoning).
+ * Shared by the approach detector and the map's intercept marker.
+ */
+export function projectedCorridorEntry(
+  lon: number,
+  lat: number,
+  courseDeg: number,
+  sogKnots: number
+): { corridor: InfrastructureCorridor; point: [number, number]; minutes: number } | null {
+  for (
+    let t = THRESHOLDS.projectionStepMinutes;
+    t <= THRESHOLDS.projectionHorizonMinutes;
+    t += THRESHOLDS.projectionStepMinutes
+  ) {
+    const point = projectPosition(lon, lat, courseDeg, (sogKnots * t) / 60);
+    for (const corridor of CORRIDORS) {
+      if (pointInPolygon(point, corridor.polygon)) {
+        return { corridor, point, minutes: t };
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Predicted infrastructure approach (CPA-style, deliberately simple): dead-
  * reckon the current course/speed forward and find the first projected entry
  * into a corridor. Gated hard against transit noise — every fairway crossing
@@ -357,28 +382,17 @@ function detectInfraApproach(contact: Contact, now: Date): Derived[] {
   const slow = sog <= THRESHOLDS.slowApproachMaxKnots;
   if (!risky && !slow) return events;
 
-  for (const corridor of CORRIDORS) {
-    if (inPoly(latest, corridor)) continue; // already there — cable-loiter's job
+  const alreadyInside = CORRIDORS.some((c) => inPoly(latest, c));
+  if (alreadyInside) return events; // cable-loiter's job
 
-    // Walk the projection until it enters the corridor
-    let tteMin: number | null = null;
-    for (
-      let t = THRESHOLDS.projectionStepMinutes;
-      t <= THRESHOLDS.projectionHorizonMinutes;
-      t += THRESHOLDS.projectionStepMinutes
-    ) {
-      const pos = projectPosition(
-        latest.longitude,
-        latest.latitude,
-        course,
-        (sog * t) / 60
-      );
-      if (pointInPolygon(pos, corridor.polygon)) {
-        tteMin = t;
-        break;
-      }
-    }
-    if (tteMin == null) continue;
+  const entry = projectedCorridorEntry(
+    latest.longitude,
+    latest.latitude,
+    course,
+    sog
+  );
+  if (entry) {
+    const { corridor, minutes: tteMin } = entry;
 
     const extra: ScoreFactor[] = [];
     if (slow) {

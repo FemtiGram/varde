@@ -1,10 +1,16 @@
 "use client";
 
+import { ClipboardList } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DECISION_LABELS,
   EVENT_TYPE_LABELS,
+  SEVERITY_LABELS,
   formatClock,
+  formatClockShort,
 } from "@/lib/format";
 import { useAppStore } from "@/lib/store";
 import type { EventDecision } from "@/lib/types";
@@ -21,9 +27,73 @@ const ACTION_LABELS: Record<EventDecision, string> = {
   none: "Angret",
 };
 
+/** Compose a watch-handover text from the current picture and the journal. */
+function buildHandover(): string {
+  const s = useAppStore.getState();
+  const open = s.events.filter((e) => e.decision === "none");
+  const criticals = open.filter((e) => e.severity === "critical");
+  const others = open.filter((e) => e.severity !== "critical");
+  const escalated = s.events.filter((e) => e.decision === "escalated");
+  const utc = new Date().toLocaleTimeString("nb-NO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+
+  const lines: string[] = [
+    "VAKTOVERLEVERING — VARDE",
+    `Generert ${formatClock(Date.now())} (${utc}Z) · Vakt: ${s.operator || "—"} · Modus: ${
+      s.mode === "scenario" ? "Scenario (konstruerte data)" : "Direkte (BarentsWatch)"
+    }`,
+    "",
+    `ÅPNE KRITISKE (${criticals.length}):`,
+    ...criticals.map(
+      (e) =>
+        `- ${e.contactName ?? "UKJENT KONTAKT"}${e.mmsi ? ` (${e.mmsi})` : ""}: ${EVENT_TYPE_LABELS[e.type]} — ${e.reason}`
+    ),
+    ...(criticals.length === 0 ? ["- ingen"] : []),
+    "",
+    `ØVRIGE ÅPNE (${others.length}): ` +
+      (["warning", "info"] as const)
+        .map(
+          (sev) =>
+            `${others.filter((e) => e.severity === sev).length} ${SEVERITY_LABELS[sev].toLowerCase()}`
+        )
+        .join(", "),
+    "",
+    `ESKALERT — VENTER OPPFØLGING (${escalated.length}):`,
+    ...escalated.map(
+      (e) =>
+        `- ${e.contactName ?? "UKJENT KONTAKT"}: ${EVENT_TYPE_LABELS[e.type]} (${e.decidedBy ?? "—"} kl. ${e.decidedAt ? formatClockShort(e.decidedAt) : "—"})`
+    ),
+    ...(escalated.length === 0 ? ["- ingen"] : []),
+    "",
+    `SISTE BESLUTNINGER (${Math.min(s.journal.length, 15)} av ${s.journal.length}):`,
+    ...[...s.journal]
+      .slice(-15)
+      .reverse()
+      .map(
+        (j) =>
+          `- ${formatClockShort(j.ts)} ${j.operator || "—"} ${
+            j.action === "none" ? "Angret" : DECISION_LABELS[j.action]
+          } — ${j.eventType ? EVENT_TYPE_LABELS[j.eventType] : "—"}, ${j.contactName ?? "UKJENT KONTAKT"}`
+      ),
+  ];
+  return lines.join("\n");
+}
+
 export function JournalView() {
   const journal = useAppStore((s) => s.journal);
   const entries = [...journal].reverse();
+
+  async function copyHandover() {
+    try {
+      await navigator.clipboard.writeText(buildHandover());
+      toast.success("Vaktoverlevering kopiert til utklippstavlen.");
+    } catch {
+      toast.error("Fikk ikke tilgang til utklippstavlen.");
+    }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col p-3">
@@ -35,8 +105,14 @@ export function JournalView() {
             utløper
           </span>
         </div>
-        <span className="font-mono text-xs text-muted-foreground">
-          {journal.length} oppføringer
+        <span className="flex items-center gap-3">
+          <span className="font-mono text-xs text-muted-foreground">
+            {journal.length} oppføringer
+          </span>
+          <Button variant="outline" size="sm" onClick={copyHandover}>
+            <ClipboardList data-icon="inline-start" aria-hidden />
+            Kopier vaktoverlevering
+          </Button>
         </span>
       </header>
       <div className="min-h-0 flex-1 rounded-lg border bg-card">

@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Toaster } from "@/components/ui/sonner";
+import { useAlarmToasts } from "@/lib/use-alarm-toasts";
 import { useDataEngine } from "@/lib/use-data-engine";
 import { useAppStore } from "@/lib/store";
 import { AppHeader } from "./app-header";
@@ -25,6 +27,7 @@ const MapView = dynamic(() => import("./map-view").then((m) => m.MapView), {
  */
 export function OperationsView() {
   useDataEngine();
+  useAlarmToasts();
   const view = useAppStore((s) => s.view);
 
   return (
@@ -61,6 +64,7 @@ export function OperationsView() {
           )}
         </div>
       </div>
+      <Toaster position="top-right" offset={{ top: 56 }} />
     </div>
   );
 }
