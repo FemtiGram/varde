@@ -70,14 +70,17 @@ export function vesselGlyphSvg({
   // severity ring (distinct SHAPE, no radius collision), plus a faint halo
   const b = 2.2; // bracket inset from the viewBox edge
   const len = 6; // bracket arm length
+  const bracketPaths =
+    `<path d="M${b} ${b + len} V${b} H${b + len}" />` +
+    `<path d="M${28 - b - len} ${b} H${28 - b} V${b + len}" />` +
+    `<path d="M${28 - b} ${28 - b - len} V${28 - b} H${28 - b - len}" />` +
+    `<path d="M${b + len} ${28 - b} H${b} V${28 - b - len}" />`;
+  // Dark casing under the cyan strokes — same trick as the track line, so the
+  // selection reads on the light chart without losing the brand cyan
   const selectionRing = selected
-    ? `<circle cx="14" cy="14" r="13" fill="var(--selection-token)" fill-opacity="0.12" />` +
-      `<g stroke="var(--selection-token)" stroke-width="2.4" fill="none" stroke-linecap="round">` +
-      `<path d="M${b} ${b + len} V${b} H${b + len}" />` +
-      `<path d="M${28 - b - len} ${b} H${28 - b} V${b + len}" />` +
-      `<path d="M${28 - b} ${28 - b - len} V${28 - b} H${28 - b - len}" />` +
-      `<path d="M${b + len} ${28 - b} H${b} V${28 - b - len}" />` +
-      `</g>`
+    ? `<circle cx="14" cy="14" r="13" fill="var(--selection-token)" fill-opacity="0.14" />` +
+      `<g stroke="#10151c" stroke-width="4.4" fill="none" stroke-linecap="round" opacity="0.9">${bracketPaths}</g>` +
+      `<g stroke="var(--selection-token)" stroke-width="2.4" fill="none" stroke-linecap="round">${bracketPaths}</g>`
     : "";
   return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" aria-hidden="true">${selectionRing}${severityRing}${shape}</svg>`;
 }

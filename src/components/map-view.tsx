@@ -592,7 +592,7 @@ export function MapView() {
           const label = showLabel
             ? `<span style="font: ${selected ? 600 : 500} 12px var(--font-geist-mono); ${
                 selected
-                  ? "color: var(--background); background: var(--selection-token);"
+                  ? "color: var(--background); background: var(--selection-token); box-shadow: 0 0 0 1.5px rgba(16,21,28,0.85);"
                   : isSignal
                     ? "color: var(--foreground); background: rgba(20,28,34,0.85);"
                     : "color: var(--contact-ais); background: rgba(20,28,34,0.78);"
