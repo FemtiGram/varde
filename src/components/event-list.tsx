@@ -47,6 +47,8 @@ export function EventList() {
   });
   // Profile = named slice of the picture for a watch task (tabs above the queue)
   const [profileId, setProfileId] = useState("alt");
+  // Roster toggle: also list vessels with no events (the green population)
+  const [showAllShips, setShowAllShips] = useState(false);
   const profile = QUEUE_PROFILES.find((p) => p.id === profileId) ?? QUEUE_PROFILES[0];
   const inProfile = (e: OperatorEvent) =>
     profile.types == null || profile.types.includes(e.type);
@@ -87,21 +89,24 @@ export function EventList() {
     return { queue, handled };
   }, [events, q, sevFilter, profileId]);
 
-  // Contacts matching the query that have no matching event — find any vessel
+  // Contacts with no visible event: top hits while searching, or the full
+  // roster when "Alle skip" is toggled on
   const contactHits = useMemo(() => {
-    if (q === "") return [];
+    if (q === "" && !showAllShips) return [];
     const represented = new Set(
       [...queue, ...handled].map((e) => e.contactId)
     );
-    return Object.values(contacts)
+    const hits = Object.values(contacts)
       .filter(
         (c) =>
           !represented.has(c.id) &&
-          ((c.name ?? "").toLowerCase().includes(q) ||
+          (q === "" ||
+            (c.name ?? "").toLowerCase().includes(q) ||
             String(c.mmsi ?? "").includes(q))
       )
-      .slice(0, 5);
-  }, [q, contacts, queue, handled]);
+      .sort((a, b) => (a.name ?? String(a.mmsi)).localeCompare(b.name ?? String(b.mmsi), "nb"));
+    return showAllShips ? hits : hits.slice(0, 5);
+  }, [q, contacts, queue, handled, showAllShips]);
 
   const ordered = useMemo(() => [...queue, ...handled], [queue, handled]);
 
@@ -280,6 +285,23 @@ export function EventList() {
               </button>
             );
           })}
+          <button
+            type="button"
+            aria-pressed={showAllShips}
+            title="Vis også fartøy uten hendelser"
+            onClick={() => setShowAllShips((v) => !v)}
+            className={cn(
+              "ml-auto flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide focus-visible:outline-2 focus-visible:outline-ring",
+              showAllShips
+                ? "border-contact-ais/50 bg-background/60 text-contact-ais"
+                : "border-transparent text-muted-foreground/60"
+            )}
+          >
+            Alle skip
+            <span className="font-mono tabular-nums">
+              {Object.keys(contacts).length}
+            </span>
+          </button>
         </div>
       </div>
       <Separator />
@@ -329,7 +351,9 @@ export function EventList() {
           {contactHits.length > 0 && (
             <>
               <div className="mt-2 px-2 pb-0.5 pt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Kontakter uten hendelser ({contactHits.length})
+                {showAllShips
+                  ? `Fartøy uten hendelser (${contactHits.length})`
+                  : `Kontakter uten hendelser (${contactHits.length})`}
               </div>
               {contactHits.map((c) => (
                 <button

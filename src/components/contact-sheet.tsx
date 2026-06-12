@@ -152,10 +152,12 @@ export function ContactSheet() {
                   A constructed MMSI must never deep-link into a live registry. */}
               {!isSensor && contact?.mmsi != null && !contact.constructed ? (
                 <a
-                  href={`https://www.marinetraffic.com/no/ais/details/ships/mmsi:${contact.mmsi}`}
+                  // VesselFinder resolves MMSI directly (MarineTraffic sits
+                  // behind Cloudflare/paywall and rarely lands)
+                  href={`https://www.vesselfinder.com/vessels/details/${contact.mmsi}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="Slå opp i MarineTraffic (åpnes i ny fane)"
+                  title="Slå opp i VesselFinder (åpnes i ny fane)"
                   className="group flex w-fit items-center gap-1.5 rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   <h2 className="truncate font-mono text-lg font-semibold underline-offset-4 group-hover:underline">
@@ -166,7 +168,7 @@ export function ContactSheet() {
                     className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground"
                   />
                   <span className="sr-only">
-                    Slå opp i MarineTraffic (åpnes i ny fane)
+                    Slå opp i VesselFinder (åpnes i ny fane)
                   </span>
                 </a>
               ) : (
