@@ -140,7 +140,7 @@ function severityFromScore(score: number): EventSeverity {
   return "info";
 }
 
-type Derived = Omit<OperatorEvent, "decision" | "decidedAt">;
+type Derived = Omit<OperatorEvent, "decision" | "decidedAt" | "decidedBy">;
 
 function makeEvent(
   ctx: FactorContext,

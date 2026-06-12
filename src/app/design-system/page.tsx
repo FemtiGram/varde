@@ -152,7 +152,7 @@ const UX_LAWS = [
   },
 ] as const;
 
-const SAMPLE_EVENT: Omit<OperatorEvent, "decision" | "decidedAt"> = {
+const SAMPLE_EVENT: Omit<OperatorEvent, "decision" | "decidedAt" | "decidedBy"> = {
   id: "demo:cable-loiter",
   type: "cable-loiter",
   severity: "critical",
@@ -183,7 +183,7 @@ function DemoEventRow() {
   );
   const selected = useAppStore((s) => s.selectedEventId === SAMPLE_EVENT.id);
   const [nowMs] = useState(() => Date.now());
-  const event: OperatorEvent = { ...SAMPLE_EVENT, decision, decidedAt };
+  const event: OperatorEvent = { ...SAMPLE_EVENT, decision, decidedAt, decidedBy: decidedAt ? "OPS" : null };
   return (
     <EventRow event={event} nowMs={nowMs} selected={selected} tabIndex={0} />
   );
@@ -461,7 +461,7 @@ export default function DesignSystemPage() {
                 Kritisk hendelse — scoringen peker mot eskalering:
               </span>
               <DecisionActions
-                event={{ ...SAMPLE_EVENT, id: "demo:actions", decision: "none", decidedAt: null }}
+                event={{ ...SAMPLE_EVENT, id: "demo:actions", decision: "none", decidedAt: null, decidedBy: null }}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -469,7 +469,7 @@ export default function DesignSystemPage() {
                 Øvrige hendelser — bekreft er det trygge standardvalget:
               </span>
               <DecisionActions
-                event={{ ...SAMPLE_EVENT, id: "demo:actions-warning", severity: "warning", decision: "none", decidedAt: null }}
+                event={{ ...SAMPLE_EVENT, id: "demo:actions-warning", severity: "warning", decision: "none", decidedAt: null, decidedBy: null }}
               />
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">

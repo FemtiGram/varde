@@ -115,6 +115,10 @@ export const THRESHOLDS = {
    * working state. Real systems hand decisions over between watches instead.
    */
   decisionRetentionMinutes: 120,
+  /** Alarm-flood (EEMUA 191): more new events than this per window means the
+   * system, not the operator, is the problem */
+  alarmFloodWindowMinutes: 10,
+  alarmFloodThreshold: 10,
 } as const;
 
 /**

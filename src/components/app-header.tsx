@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +19,21 @@ export function AppHeader() {
   const liveStatus = useAppStore((s) => s.liveStatus);
   const nowMs = useAppStore((s) => s.nowMs);
   const contactCount = useAppStore((s) => Object.keys(s.contacts).length);
+  const operator = useAppStore((s) => s.operator);
+  const setOperator = useAppStore((s) => s.setOperator);
+  // Alarm-flood (EEMUA 191): new events inside the rolling window
+  const floodCount = useAppStore((s) => {
+    const windowMs = THRESHOLDS.alarmFloodWindowMinutes * 60_000;
+    return Object.values(s.eventFirstSeen).filter((ts) => s.nowMs - ts <= windowMs)
+      .length;
+  });
+  const flood = floodCount >= THRESHOLDS.alarmFloodThreshold;
+
+  // Restore the operator signature persisted from earlier watches
+  useEffect(() => {
+    const saved = window.localStorage.getItem("varde-operator");
+    if (saved) setOperator(saved);
+  }, [setOperator]);
 
   const statusText =
     mode === "scenario"
@@ -90,6 +107,28 @@ export function AppHeader() {
         <span className="hidden font-mono text-sm text-muted-foreground sm:inline">
           {contactCount} kontakter
         </span>
+        <span
+          className={cn(
+            "hidden items-center gap-1 font-mono text-sm sm:flex",
+            flood ? "font-semibold text-status-warning" : "text-muted-foreground"
+          )}
+          title={`Nye hendelser siste ${THRESHOLDS.alarmFloodWindowMinutes} min. Over ${THRESHOLDS.alarmFloodThreshold} regnes som hendelsesflom (EEMUA 191) — da er systemet, ikke operatøren, problemet.`}
+        >
+          {floodCount}/{THRESHOLDS.alarmFloodWindowMinutes}min
+          {flood && <span className="text-xs uppercase">flom</span>}
+        </span>
+        <label className="flex items-center gap-1.5 font-mono text-sm text-muted-foreground">
+          <span className="text-xs uppercase tracking-wider">Vakt</span>
+          <input
+            value={operator}
+            onChange={(e) => setOperator(e.target.value)}
+            aria-label="Operatørsignatur — stemples på beslutninger og journal"
+            title="Operatørsignatur — stemples på beslutninger og journal"
+            size={4}
+            maxLength={4}
+            className="w-12 rounded-sm border bg-background/60 px-1.5 py-0.5 text-center uppercase text-foreground outline-none focus-visible:border-ring"
+          />
+        </label>
         <span
           className="font-mono text-sm tabular-nums"
           aria-label="Operasjonsklokke"

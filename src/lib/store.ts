@@ -21,6 +21,7 @@ registerEnrichment(SCENARIO_ENRICHMENT);
 interface DecisionRecord {
   decision: EventDecision;
   decidedAt: string;
+  by: string;
 }
 
 interface AppState {
@@ -40,6 +41,10 @@ interface AppState {
   decisionLastSeen: Record<string, number>;
   /** Events the operator has looked at or decided — unseen criticals blink (ATC alarm discipline) */
   seenEvents: Record<string, true>;
+  /** When each event id first appeared — drives the alarm-flood metric */
+  eventFirstSeen: Record<string, number>;
+  /** Operator signature (vakt-initialer) stamped on decisions and the journal */
+  operator: string;
   selectedContactId: string | null;
   selectedEventId: string | null;
   /** Bumped whenever the map should fly to the selected contact (list/drawer driven) */
@@ -60,6 +65,7 @@ interface AppState {
   setSheetHeight: (px: number) => void;
   setMapGreyscale: (on: boolean) => void;
   setMeasuring: (on: boolean) => void;
+  setOperator: (sig: string) => void;
   setLiveStatus: (status: LiveStatus) => void;
   setShowInfrastructure: (show: boolean) => void;
   restartScenario: () => void;
@@ -151,6 +157,22 @@ function pruneDecisions(
   return { decisions: nextDecisions, lastSeen: nextSeen };
 }
 
+/** First-appearance times for the alarm-flood metric; pruned after an hour. */
+function trackFirstSeen(
+  prev: Record<string, number>,
+  derived: { id: string }[],
+  nowMs: number
+): Record<string, number> {
+  const next: Record<string, number> = {};
+  for (const [id, ts] of Object.entries(prev)) {
+    if (nowMs - ts < 3_600_000) next[id] = ts;
+  }
+  for (const d of derived) {
+    if (!(d.id in next)) next[d.id] = prev[d.id] ?? nowMs;
+  }
+  return next;
+}
+
 function mergeDecisions(
   derived: ReturnType<typeof deriveEvents>,
   decisions: Record<string, DecisionRecord>
@@ -161,6 +183,7 @@ function mergeDecisions(
       ...d,
       decision: rec?.decision ?? "none",
       decidedAt: rec?.decidedAt ?? null,
+      decidedBy: rec?.by ?? null,
     };
   });
 }
@@ -176,6 +199,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   journal: [],
   decisionLastSeen: {},
   seenEvents: {},
+  eventFirstSeen: {},
+  operator: "OPS",
   selectedContactId: null,
   selectedEventId: null,
   focusNonce: 0,
@@ -193,6 +218,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setMapGreyscale: (mapGreyscale) => set({ mapGreyscale }),
 
   setMeasuring: (measuring) => set({ measuring }),
+
+  setOperator: (sig) => {
+    const operator = sig.toUpperCase().slice(0, 4);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("varde-operator", operator);
+    }
+    set({ operator });
+  },
 
   setMode: (mode) => {
     if (mode === get().mode) return;
@@ -219,6 +252,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       decisions: {},
       decisionLastSeen: {},
       seenEvents: {},
+      eventFirstSeen: {},
       selectedContactId: null,
       selectedEventId: null,
     }),
@@ -237,6 +271,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       nowMs,
       decisions: pruned.decisions,
       decisionLastSeen: pruned.lastSeen,
+      eventFirstSeen: trackFirstSeen(get().eventFirstSeen, derived, nowMs),
       events: mergeDecisions(derived, pruned.decisions),
     });
   },
@@ -253,6 +288,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       nowMs,
       decisions: pruned.decisions,
       decisionLastSeen: pruned.lastSeen,
+      eventFirstSeen: trackFirstSeen(get().eventFirstSeen, derived, nowMs),
       events: mergeDecisions(derived, pruned.decisions),
     });
   },
@@ -301,7 +337,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (decision === "none") {
       delete decisions[eventId];
     } else {
-      decisions[eventId] = { decision, decidedAt: new Date().toISOString() };
+      decisions[eventId] = {
+        decision,
+        decidedAt: new Date().toISOString(),
+        by: get().operator,
+      };
     }
     const event = get().events.find((e) => e.id === eventId);
     const entry: JournalEntry = {
@@ -311,6 +351,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       mmsi: event?.mmsi ?? null,
       eventType: event?.type ?? null,
       action: decision,
+      operator: get().operator,
     };
     set({
       journal: [...get().journal, entry].slice(-500),
@@ -322,6 +363,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               ...e,
               decision,
               decidedAt: decision === "none" ? null : decisions[eventId].decidedAt,
+              decidedBy: decision === "none" ? null : decisions[eventId].by,
             }
           : e
       ),

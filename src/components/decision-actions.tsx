@@ -95,7 +95,10 @@ export function DecisionActions({
         <span className="text-sm text-muted-foreground">
           {DECISION_LABELS[event.decision]}
           {event.decidedAt && (
-            <span className="font-mono"> kl. {formatClockShort(event.decidedAt)}</span>
+            <span className="font-mono">
+              {" "}
+              · {event.decidedBy ?? "—"} kl. {formatClockShort(event.decidedAt)}
+            </span>
           )}
         </span>
         <Button

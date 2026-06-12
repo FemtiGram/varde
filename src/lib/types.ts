@@ -90,6 +90,8 @@ export interface OperatorEvent {
   active: boolean;
   decision: EventDecision;
   decidedAt: string | null;
+  /** Operator signature that took the decision */
+  decidedBy: string | null;
 }
 
 export interface MonitoringZone {
@@ -126,4 +128,6 @@ export interface JournalEntry {
   eventType: EventType | null;
   /** The decision taken; "none" means a decision was undone */
   action: EventDecision;
+  /** Operator signature (vakt-initialer) at the time of the action */
+  operator: string;
 }

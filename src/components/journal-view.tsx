@@ -51,6 +51,7 @@ export function JournalView() {
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-3 py-2 font-medium">Tid</th>
+                  <th className="px-3 py-2 font-medium">Vakt</th>
                   <th className="px-3 py-2 font-medium">Handling</th>
                   <th className="px-3 py-2 font-medium">Kontakt</th>
                   <th className="px-3 py-2 font-medium">Hendelse</th>
@@ -65,6 +66,9 @@ export function JournalView() {
                   >
                     <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs text-muted-foreground">
                       {formatClock(entry.ts)}
+                    </td>
+                    <td className="px-3 py-1.5 font-mono text-xs">
+                      {entry.operator || "—"}
                     </td>
                     <td className="px-3 py-1.5 font-medium">
                       {ACTION_LABELS[entry.action]}

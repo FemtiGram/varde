@@ -169,7 +169,8 @@ function BoardCard({ event, nowMs }: { event: OperatorEvent; nowMs: number }) {
       </p>
       {event.decidedAt && (
         <p className="mt-1 font-mono text-xs text-muted-foreground">
-          {DECISION_LABELS[event.decision]} kl. {formatClockShort(event.decidedAt)}
+          {DECISION_LABELS[event.decision]} · {event.decidedBy ?? "—"} kl.{" "}
+          {formatClockShort(event.decidedAt)}
         </p>
       )}
       <div className="mt-2 flex items-center justify-between gap-1">
