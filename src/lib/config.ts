@@ -92,6 +92,8 @@ export const THRESHOLDS = {
   cableLoiterMinMinutes: 10,
   /** Contacts slower than this are drawn as stationary (diamond) markers */
   stationaryMaxSpeedKnots: 0.5,
+  /** From this zoom level every vessel gets a name tag (declutter below it) */
+  labelAllZoom: 11.5,
   /** How much recent track to keep per contact (minutes) */
   trackHistoryMinutes: 90,
   /** Live polling interval against our own proxy (ms) */

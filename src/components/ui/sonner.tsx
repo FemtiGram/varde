@@ -1,15 +1,14 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      // Varde is dark-only by design; resolving via next-themes (no provider
+      // here) falls back to the OS and can paint light-theme text on dark
+      theme="dark"
       className="toaster group"
       icons={{
         success: (

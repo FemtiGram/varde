@@ -198,6 +198,11 @@
     opacity: 0.5;
   }
 }
+/* Toasts: description must hold AA contrast on the dark popover */
+[data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
+
 /* Alarm blink — ATC discipline: blinking means exactly one thing, an
    unacknowledged critical. Discrete on/off, not a fade. */
 @keyframes varde-alarm {

@@ -5,6 +5,13 @@ import { useEffect } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { THRESHOLDS } from "@/lib/config";
 import { formatClock } from "@/lib/format";
@@ -20,6 +27,8 @@ export function AppHeader() {
   const nowMs = useAppStore((s) => s.nowMs);
   const contactCount = useAppStore((s) => Object.keys(s.contacts).length);
   const operator = useAppStore((s) => s.operator);
+  const scenarioSpeed = useAppStore((s) => s.scenarioSpeed);
+  const setScenarioSpeed = useAppStore((s) => s.setScenarioSpeed);
   const setOperator = useAppStore((s) => s.setOperator);
   // Alarm-flood (EEMUA 191): new events inside the rolling window
   const floodCount = useAppStore((s) => {
@@ -37,7 +46,7 @@ export function AppHeader() {
 
   const statusText =
     mode === "scenario"
-      ? `Scenario · konstruerte data · ${THRESHOLDS.scenarioSpeedup}× hastighet`
+      ? `Scenario · konstruerte data · ${scenarioSpeed}× hastighet`
       : liveStatus === "ok"
         ? "Direkte · BarentsWatch"
         : liveStatus === "connecting"
@@ -70,15 +79,41 @@ export function AppHeader() {
       </ToggleGroup>
 
       {mode === "scenario" && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={restartScenario}
-          title="Start scenarioet på nytt"
-        >
-          <RotateCcw data-icon="inline-start" aria-hidden />
-          Start på nytt
-        </Button>
+        <>
+          <Select
+            value={String(scenarioSpeed)}
+            onValueChange={(v) => setScenarioSpeed(Number(v))}
+          >
+            <SelectTrigger
+              size="sm"
+              className="w-20 font-mono"
+              aria-label="Avspillingshastighet"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[1, 3, 6, 12, 24].map((s) => (
+                <SelectItem
+                  key={s}
+                  value={String(s)}
+                  className="font-mono"
+                  aria-label={`${s} ganger sanntid`}
+                >
+                  {s}×
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={restartScenario}
+            title="Start scenarioet på nytt"
+          >
+            <RotateCcw data-icon="inline-start" aria-hidden />
+            Start på nytt
+          </Button>
+        </>
       )}
 
       <div className="ml-auto flex items-center gap-3">

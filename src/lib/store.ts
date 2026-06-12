@@ -27,8 +27,14 @@ interface DecisionRecord {
 interface AppState {
   mode: DataMode;
   liveStatus: LiveStatus;
-  /** Wall-clock ms when scenario mode was (re)started */
+  /** Wall-clock ms when scenario mode was (re)started (scenario t=0) */
   scenarioAnchorMs: number | null;
+  /** Replay speed (scenario seconds per wall second) */
+  scenarioSpeed: number;
+  /** Wall ms at the last speed change — the clock re-anchors so speed changes never jump */
+  scenarioSpeedAnchorWallMs: number;
+  /** Scenario clock value at the last speed change */
+  scenarioSpeedBaseMs: number;
   /** The operational clock (ms since epoch) — wall time in live, replay time in scenario */
   nowMs: number;
   /** All tracked contacts (any source), keyed by contact id */
@@ -66,6 +72,7 @@ interface AppState {
   setMapGreyscale: (on: boolean) => void;
   setMeasuring: (on: boolean) => void;
   setOperator: (sig: string) => void;
+  setScenarioSpeed: (speed: number) => void;
   setLiveStatus: (status: LiveStatus) => void;
   setShowInfrastructure: (show: boolean) => void;
   restartScenario: () => void;
@@ -192,6 +199,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   mode: "live",
   liveStatus: "connecting",
   scenarioAnchorMs: null,
+  scenarioSpeed: THRESHOLDS.scenarioSpeedup,
+  scenarioSpeedAnchorWallMs: 0,
+  scenarioSpeedBaseMs: 0,
   nowMs: Date.now(),
   contacts: {},
   events: [],
@@ -219,6 +229,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setMeasuring: (measuring) => set({ measuring }),
 
+  setScenarioSpeed: (speed) => {
+    const s = get();
+    const wall = Date.now();
+    // Freeze the scenario clock at its current value, continue at the new rate
+    const baseMs =
+      s.scenarioAnchorMs != null
+        ? s.scenarioSpeedBaseMs + (wall - s.scenarioSpeedAnchorWallMs) * s.scenarioSpeed
+        : wall;
+    set({
+      scenarioSpeed: speed,
+      scenarioSpeedAnchorWallMs: wall,
+      scenarioSpeedBaseMs: baseMs,
+    });
+  },
+
   setOperator: (sig) => {
     const operator = sig.toUpperCase().slice(0, 4);
     if (typeof window !== "undefined") {
@@ -236,6 +261,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedContactId: null,
       selectedEventId: null,
       scenarioAnchorMs: mode === "scenario" ? Date.now() : null,
+      scenarioSpeedAnchorWallMs: Date.now(),
+      scenarioSpeedBaseMs: Date.now(),
       nowMs: Date.now(),
     });
   },
@@ -247,6 +274,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   restartScenario: () =>
     set({
       scenarioAnchorMs: Date.now(),
+      scenarioSpeedAnchorWallMs: Date.now(),
+      scenarioSpeedBaseMs: Date.now(),
       contacts: {},
       events: [],
       decisions: {},
@@ -371,7 +400,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
-/** Scenario clock: wall time since anchor, sped up. */
-export function scenarioNowMs(anchorMs: number, wallMs: number): number {
-  return anchorMs + (wallMs - anchorMs) * THRESHOLDS.scenarioSpeedup;
+/** Scenario clock: continues from the last speed-change anchor at the current rate. */
+export function scenarioNowMs(
+  state: Pick<AppState, "scenarioSpeedBaseMs" | "scenarioSpeedAnchorWallMs" | "scenarioSpeed">,
+  wallMs: number
+): number {
+  return (
+    state.scenarioSpeedBaseMs +
+    (wallMs - state.scenarioSpeedAnchorWallMs) * state.scenarioSpeed
+  );
 }

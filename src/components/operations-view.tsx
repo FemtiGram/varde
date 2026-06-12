@@ -29,6 +29,18 @@ export function OperationsView() {
   useDataEngine();
   useAlarmToasts();
   const view = useAppStore((s) => s.view);
+  const sheetOpen = useAppStore(
+    (s) => s.view === "map" && s.selectedContactId != null
+  );
+  const sheetHeight = useAppStore((s) => s.sheetHeight);
+
+  // Toasts live in the map's lower-left corner with the same inset as the
+  // Kartlag panel, riding on top of the bottom sheet when it is open.
+  // Rail (48) + event queue (370) put the map's left edge at 418.
+  const toastOffset = {
+    left: view === "map" ? 48 + 370 + 12 : 48 + 12,
+    bottom: sheetOpen ? sheetHeight + 12 : 12,
+  };
 
   return (
     <div className="flex h-dvh">
@@ -64,7 +76,7 @@ export function OperationsView() {
           )}
         </div>
       </div>
-      <Toaster position="top-right" offset={{ top: 56 }} />
+      <Toaster position="bottom-left" offset={toastOffset} mobileOffset={toastOffset} />
     </div>
   );
 }

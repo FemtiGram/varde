@@ -77,7 +77,7 @@ export function useDataEngine() {
     function tick() {
       const state = useAppStore.getState();
       if (state.mode === "scenario" && state.scenarioAnchorMs != null) {
-        const nowMs = scenarioNowMs(state.scenarioAnchorMs, Date.now());
+        const nowMs = scenarioNowMs(state, Date.now());
         const nowSec = (nowMs - state.scenarioAnchorMs) / 1000;
         const fromSec = nowSec - THRESHOLDS.trackHistoryMinutes * 60;
         const reports = scenarioReports(fromSec, nowSec, state.scenarioAnchorMs);

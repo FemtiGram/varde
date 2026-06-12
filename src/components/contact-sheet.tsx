@@ -3,7 +3,6 @@
 import {
   Crosshair,
   ExternalLink,
-  EyeOff,
   Flag,
   ShieldAlert,
   ShieldOff,
@@ -22,11 +21,7 @@ import {
   formatSpeed,
 } from "@/lib/format";
 import { formatPosition } from "@/lib/geo";
-import {
-  riskProfile,
-  type RiskLevel,
-  type RiskReasonId,
-} from "@/lib/risk";
+import { riskProfile, type RiskLevel } from "@/lib/risk";
 import { shipTypeLabel } from "@/lib/ship-types";
 import { useAppStore } from "@/lib/store";
 import type { OperatorEvent } from "@/lib/types";
@@ -213,19 +208,7 @@ export function ContactSheet() {
               <RiskLevelText level={risk.level} />
             </div>
           )}
-          {risk && risk.reasons.length > 0 && (
-            <ul className="flex flex-col gap-1">
-              {risk.reasons.map((reason) => (
-                <li
-                  key={reason.id}
-                  className="flex items-start gap-1.5 text-sm leading-snug text-muted-foreground"
-                >
-                  <RiskReasonIcon id={reason.id} />
-                  {reason.label}
-                </li>
-              ))}
-            </ul>
-          )}
+
 
           {/* Confirmed (AIS-derived) */}
           <div className="rounded-md border bg-background/50 p-2.5">
@@ -237,7 +220,7 @@ export function ContactSheet() {
                 Ingen AIS-identitet — kontakten finnes bare i sensorbildet.
               </p>
             ) : (
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+              <dl>
                 <DataField
                   label="Flaggstat"
                   value={
@@ -252,13 +235,21 @@ export function ContactSheet() {
                         <span className="truncate">
                           {risk.flag.country ?? "Ukjent"} ({risk.flag.mid})
                         </span>
+                        {risk.flag.risky && (
+                          <span
+                            className="flex items-center gap-1 text-sm text-status-warning"
+                            title="Flaggstat på forenklet risikoliste (illustrativ forenkling)"
+                          >
+                            <Flag aria-hidden className="size-3.5 shrink-0" />
+                            Risikoliste
+                          </span>
+                        )}
                       </span>
                     ) : (
                       "—"
                     )
                   }
                 />
-                <DataField label="Type" value={shipTypeLabel(contact?.shipType ?? null)} />
               </dl>
             )}
           </div>
@@ -473,19 +464,6 @@ const RISK_TEXT: Record<RiskLevel, { className: string; label: string }> = {
 function RiskLevelText({ level }: { level: RiskLevel }) {
   const { className, label } = RISK_TEXT[level];
   return <span className={cn("text-sm font-semibold", className)}>{label}</span>;
-}
-
-/** Icons for risk reasons — always paired with their text label. */
-const RISK_REASON_ICONS: Record<RiskReasonId, { Icon: typeof Flag; className: string }> = {
-  sanctions: { Icon: ShieldAlert, className: "text-status-critical" },
-  insurance: { Icon: ShieldOff, className: "text-status-warning" },
-  flag: { Icon: Flag, className: "text-status-warning" },
-  "no-ais": { Icon: EyeOff, className: "text-status-warning" },
-};
-
-function RiskReasonIcon({ id }: { id: RiskReasonId }) {
-  const { Icon, className } = RISK_REASON_ICONS[id];
-  return <Icon aria-hidden className={cn("mt-0.5 size-3.5 shrink-0", className)} />;
 }
 
 function DataField({

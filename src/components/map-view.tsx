@@ -527,8 +527,11 @@ export function MapView() {
         const alarm = alarmContacts.has(contact.id);
         // A stale AIS contact renders as a ghost at last known position
         const ghost = stale && !isSensor;
-        // Non-AIS contacts and dark vessels are always labelled — they are the signal
-        const showLabel = Boolean(severity) || selected || isSensor || ghost;
+        // Signal contacts are always labelled; zoomed in far enough that
+        // there is room, everyone gets a quiet green tag (chart-plotter style)
+        const zoomLabels = map.getZoom() >= THRESHOLDS.labelAllZoom;
+        const isSignal = Boolean(severity) || selected || isSensor || ghost;
+        const showLabel = isSignal || zoomLabels;
         const baseName =
           contact.name ?? (isSensor ? "UKJENT KONTAKT" : String(contact.mmsi));
         const name = ghost
@@ -542,6 +545,7 @@ export function MapView() {
           stale,
           alarm,
           showLabel,
+          isSignal,
           name,
         ].join("|");
 
@@ -589,7 +593,9 @@ export function MapView() {
             ? `<span style="font: ${selected ? 600 : 500} 12px var(--font-geist-mono); ${
                 selected
                   ? "color: var(--background); background: var(--selection-token);"
-                  : "color: var(--foreground); background: rgba(20,28,34,0.85);"
+                  : isSignal
+                    ? "color: var(--foreground); background: rgba(20,28,34,0.85);"
+                    : "color: var(--contact-ais); background: rgba(20,28,34,0.78);"
               } padding: 1px 5px; border-radius: 3px; white-space: nowrap;${
                 isSensor && !selected ? "border: 1px dashed var(--contact-unknown);" : ""
               }">${name}</span>`
@@ -738,8 +744,12 @@ export function MapView() {
     if (map) {
       if (map.loaded()) sync();
       else map.once("load", sync);
+      map.on("zoomend", sync);
     }
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      map?.off("zoomend", sync);
+    };
   }, []);
 
   return (
