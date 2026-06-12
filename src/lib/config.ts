@@ -100,6 +100,15 @@ export const THRESHOLDS = {
   serverCacheMs: 20_000,
   /** Scenario replay speed multiplier (scenario seconds per wall-clock second) */
   scenarioSpeedup: 12,
+  /** Course projection (dead reckoning) for infrastructure approach */
+  projectionHorizonMinutes: 45,
+  projectionStepMinutes: 1,
+  /** Below this the contact is not meaningfully under way */
+  projectionMinSpeedKnots: 3,
+  /** Approaches are only flagged for slow vessels (pre-drag posture) or risky profiles */
+  slowApproachMaxKnots: 6,
+  /** Time-to-entry under this adds the "imminent" factor */
+  approachImminentMinutes: 15,
   /**
    * How long a decision is kept after its event's condition has lapsed
    * (minutes). The journal keeps the permanent record; this only bounds the
@@ -119,6 +128,7 @@ export const SCORING = {
     "cable-loiter": 55,
     "ais-jump": 45,
     "ais-gap": 40,
+    "infra-approach": 35,
     "zone-entry": 30,
     loitering: 30,
   },
@@ -132,6 +142,8 @@ export const SCORING = {
     riskyFlag: 10,
     insuranceLapsed: 10,
     /** Behaviour aggravators */
+    slowApproach: 10, // creeping toward a corridor (pre-drag posture)
+    imminentApproach: 15, // predicted entry under approachImminentMinutes
     longGap: 10, // gap > 30 min
     extremeJump: 10, // implied speed > 2× plausible max
     longLoiter: 10, // loitering > 30 min

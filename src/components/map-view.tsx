@@ -10,6 +10,7 @@ import {
   THRESHOLDS,
   ZONES,
 } from "@/lib/config";
+import { projectPosition } from "@/lib/geo";
 import { useAppStore } from "@/lib/store";
 import type { Contact, EventSeverity } from "@/lib/types";
 import { formatClockShort } from "@/lib/format";
@@ -238,6 +239,23 @@ export function MapView() {
         source: "corridors",
         filter: ["==", ["get", "id"], ""],
         paint: { "line-color": "#b53f9e", "line-width": 3.5, "line-opacity": 1 },
+      });
+
+      // Projected course vector (dead reckoning) for the selected contact
+      map.addSource("projection", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "projection-line",
+        type: "line",
+        source: "projection",
+        paint: {
+          "line-color": "#2a3340",
+          "line-width": 1.8,
+          "line-dasharray": [2, 2],
+          "line-opacity": 0.9,
+        },
       });
 
       // Selected contact's recent track
@@ -477,6 +495,38 @@ export function MapView() {
                     p.longitude,
                     p.latitude,
                   ]),
+                },
+              }
+            : { type: "FeatureCollection", features: [] }
+        );
+      }
+
+      // Projection vector: where is the selected contact heading?
+      const projSource = map.getSource("projection") as
+        | maplibregl.GeoJSONSource
+        | undefined;
+      if (projSource) {
+        const sel =
+          selectedContactId != null ? contacts[selectedContactId] : undefined;
+        const sog = sel?.latest.speedOverGround ?? null;
+        const course =
+          sel?.latest.courseOverGround ?? sel?.latest.trueHeading ?? null;
+        projSource.setData(
+          sel && sog != null && course != null && sog >= THRESHOLDS.projectionMinSpeedKnots
+            ? {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [sel.latest.longitude, sel.latest.latitude],
+                    projectPosition(
+                      sel.latest.longitude,
+                      sel.latest.latitude,
+                      course,
+                      (sog * THRESHOLDS.projectionHorizonMinutes) / 60
+                    ),
+                  ],
                 },
               }
             : { type: "FeatureCollection", features: [] }

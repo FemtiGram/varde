@@ -45,7 +45,9 @@ export function AboutDialog() {
           </p>
           <p>
             <strong>Hendelseslogikken</strong> (AIS-bortfall, AIS-sprang, lav
-            fart i sone/korridor, soneinngang) er bevisst enkel og illustrativ.
+            fart i sone/korridor, soneinngang, kurs mot infrastruktur) er
+            bevisst enkel og illustrativ — kursfremskrivingen er ren
+            bestikknavigasjon uten svingprediksjon.
             Overvåkingssonene er tegnet for prototypen og er ikke offisielle
             områder. Dette er ikke et operativt eller testet system.
           </p>

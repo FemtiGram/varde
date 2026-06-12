@@ -71,3 +71,18 @@ export function formatPosition(lat: number, lon: number): string {
   };
   return `${fmt(lat, "N", "S")} ${fmt(lon, "E", "W")}`;
 }
+
+/** Dead-reckoning: project a position along a bearing (flat-earth approximation,
+ * adequate at fjord scale and deliberately simple — stated in the about note). */
+export function projectPosition(
+  lon: number,
+  lat: number,
+  bearingDeg: number,
+  distanceNm: number
+): [number, number] {
+  const rad = (bearingDeg * Math.PI) / 180;
+  const dLat = (distanceNm * Math.cos(rad)) / 60;
+  const dLon =
+    (distanceNm * Math.sin(rad)) / (60 * Math.cos((lat * Math.PI) / 180));
+  return [lon + dLon, lat + dLat];
+}

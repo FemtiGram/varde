@@ -50,6 +50,7 @@ export type EventType =
   | "loitering"
   | "cable-loiter"
   | "zone-entry"
+  | "infra-approach"
   | "dark-contact";
 
 export type EventSeverity = "critical" | "warning" | "info";

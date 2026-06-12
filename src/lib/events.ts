@@ -1,5 +1,5 @@
 import { CORRIDORS, SCORING, THRESHOLDS, ZONES } from "./config";
-import { haversineMetres, pointInPolygon } from "./geo";
+import { haversineMetres, pointInPolygon, projectPosition } from "./geo";
 import { getEnrichment, flagFromMmsi } from "./risk";
 import { maxPlausibleSpeed } from "./ship-types";
 import type {
@@ -40,6 +40,7 @@ function inPoly(p: PositionReport, area: MonitoringZone | InfrastructureCorridor
 
 const TYPE_BASE_LABELS: Record<EventType, string> = {
   "dark-contact": "Grunnscore: kontakt uten AIS",
+  "infra-approach": "Grunnscore: kurs mot infrastruktur",
   "cable-loiter": "Grunnscore: lav fart i kabelkorridor",
   "ais-jump": "Grunnscore: AIS-sprang",
   "ais-gap": "Grunnscore: AIS-bortfall",
@@ -332,6 +333,82 @@ function detectCableLoiter(contact: Contact, now: Date): Derived[] {
   return events;
 }
 
+/**
+ * Predicted infrastructure approach (CPA-style, deliberately simple): dead-
+ * reckon the current course/speed forward and find the first projected entry
+ * into a corridor. Gated hard against transit noise — every fairway crossing
+ * passes over the corridors, so an approach is only an event when the vessel
+ * is creeping (pre-drag posture) or carries an elevated risk profile.
+ */
+function detectInfraApproach(contact: Contact, now: Date): Derived[] {
+  const events: Derived[] = [];
+  if (contact.source !== "ais") return events;
+  const latest = contact.latest;
+  const sog = latest.speedOverGround;
+  const course = latest.courseOverGround ?? latest.trueHeading;
+  if (sog == null || course == null) return events;
+  if (sog < THRESHOLDS.projectionMinSpeedKnots) return events;
+
+  const enrichment = getEnrichment(contact);
+  const flag = flagFromMmsi(contact.mmsi);
+  const risky = Boolean(
+    enrichment?.sanctionsMatch || enrichment?.insurance === "utløpt" || flag?.risky
+  );
+  const slow = sog <= THRESHOLDS.slowApproachMaxKnots;
+  if (!risky && !slow) return events;
+
+  for (const corridor of CORRIDORS) {
+    if (inPoly(latest, corridor)) continue; // already there — cable-loiter's job
+
+    // Walk the projection until it enters the corridor
+    let tteMin: number | null = null;
+    for (
+      let t = THRESHOLDS.projectionStepMinutes;
+      t <= THRESHOLDS.projectionHorizonMinutes;
+      t += THRESHOLDS.projectionStepMinutes
+    ) {
+      const pos = projectPosition(
+        latest.longitude,
+        latest.latitude,
+        course,
+        (sog * t) / 60
+      );
+      if (pointInPolygon(pos, corridor.polygon)) {
+        tteMin = t;
+        break;
+      }
+    }
+    if (tteMin == null) continue;
+
+    const extra: ScoreFactor[] = [];
+    if (slow) {
+      extra.push({
+        id: "slow-approach",
+        label: "Lav fart mot korridor",
+        points: SCORING.factors.slowApproach,
+      });
+    }
+    if (tteMin <= THRESHOLDS.approachImminentMinutes) {
+      extra.push({
+        id: "imminent",
+        label: `Beregnet ankomst < ${THRESHOLDS.approachImminentMinutes} min`,
+        points: SCORING.factors.imminentApproach,
+      });
+    }
+    events.push(
+      makeEvent(
+        // startedAt anchors to the report the projection is based on — stable
+        // per report, honest about its basis
+        { type: "infra-approach", contact, position: latest, startedAt: latest.msgtime, now, extra },
+        corridor.id,
+        latest.msgtime,
+        `Med kurs ${Math.round(course)}° og ${sog.toFixed(1)} kn når kontakten ${corridor.name} om ~${tteMin} min (enkel kursfremskriving).`
+      )
+    );
+  }
+  return events;
+}
+
 function detectZoneEvents(contact: Contact, now: Date): Derived[] {
   const events: Derived[] = [];
   const track = contact.track;
@@ -428,6 +505,7 @@ export function deriveEvents(contacts: Contact[], now: Date): Derived[] {
     }
     const jump = detectAisJump(contact, now);
     if (jump) events.push(jump);
+    events.push(...detectInfraApproach(contact, now));
     events.push(...detectCableLoiter(contact, now));
     events.push(...detectZoneEvents(contact, now));
   }

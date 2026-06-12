@@ -87,6 +87,11 @@ export function MapLayersControl() {
           <LegendRow label="Valgt kontakt">
             <VesselGlyph moving headingDeg={45} severity={null} selected size={20} />
           </LegendRow>
+          <LegendRow label="Kursvektor (valgt fartøy, fremskrevet)">
+            <svg width="20" height="8" aria-hidden>
+              <line x1="0" y1="4" x2="20" y2="4" stroke="#566275" strokeWidth="2" strokeDasharray="3 3" />
+            </svg>
+          </LegendRow>
           <LegendRow label="Overvåkingssone">
             <svg width="20" height="8" aria-hidden>
               <line x1="0" y1="4" x2="20" y2="4" stroke="#5ec1d8" strokeWidth="2" strokeDasharray="6 3" />

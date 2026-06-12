@@ -32,6 +32,8 @@ const GROUP_OF: Record<string, FactorGroup> = {
   insurance: "kontekst",
   source: "kontekst",
   "long-gap": "atferd",
+  "slow-approach": "atferd",
+  "imminent": "atferd",
   "extreme-jump": "atferd",
   "long-loiter": "atferd",
   recency: "atferd",

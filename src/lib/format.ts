@@ -37,6 +37,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   "zone-entry": "Soneinngang",
   loitering: "Lav fart i sone",
   "cable-loiter": "Lav fart i kabelkorridor",
+  "infra-approach": "Kurs mot infrastruktur",
   "dark-contact": "Kontakt uten AIS",
 };
 
