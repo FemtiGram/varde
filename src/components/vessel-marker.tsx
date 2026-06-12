@@ -4,11 +4,12 @@ import type { EventSeverity, SourceType } from "@/lib/types";
  * Contact marker glyph. Status is encoded by SHAPE first, colour second:
  *  - moving AIS vessel   → directional chevron (rotated to heading/course)
  *  - stationary AIS      → diamond (no meaningful heading)
- *  - non-AIS sensor      → dashed hollow circle with centre dot (unknown identity)
+ *  - non-AIS sensor      → solid circle with punched centre (unknown identity)
  *  - active event        → severity ring around the glyph (+ label on the map)
- *  - selected            → filled halo + solid ring + glow
+ *  - dark vessel (stale)  → hollow ghost outline at last known position (LKP)
+ *  - selected            → designation reticle (corner brackets) + ping + glow
  * Colour vocabulary: green = normal traffic, red/amber/blue = severity,
- * cyan = selection, near-white dashed = unknown contact. The same in both
+ * cyan = selection, solid circle = unknown contact. The same in both
  * map modes, so the symbols stay learnable.
  * Produced as an SVG string so MapLibre DOM markers and React (design system)
  * share the exact same artwork.
@@ -20,6 +21,8 @@ export interface VesselGlyphOptions {
   headingDeg: number | null;
   severity: EventSeverity | null;
   selected: boolean;
+  /** Last-known-position ghost: hollow outline for stale/dark contacts */
+  ghost?: boolean;
   size?: number;
 }
 
@@ -35,6 +38,7 @@ export function vesselGlyphSvg({
   headingDeg,
   severity,
   selected,
+  ghost = false,
   size = 26,
 }: VesselGlyphOptions): string {
   // Normal traffic is green ("uneventful") so it stays visible on the
@@ -43,23 +47,37 @@ export function vesselGlyphSvg({
   const rotation = moving && headingDeg != null ? headingDeg : 0;
   let shape: string;
   if (source !== "ais") {
-    // Unknown contact: hollow dashed circle + centre dot — identity unconfirmed
-    const stroke = severity ? SEVERITY_VARS[severity] : "var(--contact-unknown)";
+    // Unknown contact: SOLID circle (full visual weight, like the vessel
+    // glyphs) with a punched centre hole — the circle shape still says
+    // "identity unconfirmed" where a chevron would read as an AIS vessel
+    const discFill = severity ? SEVERITY_VARS[severity] : "var(--contact-unknown)";
     shape =
-      `<circle cx="14" cy="14" r="7.5" fill="none" stroke="${stroke}" stroke-width="2" stroke-dasharray="3.5 2.5" />` +
-      `<circle cx="14" cy="14" r="2" fill="${stroke}" />`;
+      `<circle cx="14" cy="14" r="8" fill="${discFill}" stroke="var(--background)" stroke-width="1.5" />` +
+      `<circle cx="14" cy="14" r="2.4" fill="var(--background)" />`;
   } else if (moving) {
-    shape = `<path d="M14 3 L22 24 L14 19.5 L6 24 Z" fill="${fill}" stroke="var(--background)" stroke-width="1.5" stroke-linejoin="round" transform="rotate(${rotation} 14 14)" />`;
+    shape = ghost
+      ? `<path d="M14 3 L22 24 L14 19.5 L6 24 Z" fill="none" stroke="${fill}" stroke-width="2" stroke-linejoin="round" transform="rotate(${rotation} 14 14)" />`
+      : `<path d="M14 3 L22 24 L14 19.5 L6 24 Z" fill="${fill}" stroke="var(--background)" stroke-width="1.5" stroke-linejoin="round" transform="rotate(${rotation} 14 14)" />`;
   } else {
-    shape = `<path d="M14 6.5 L21.5 14 L14 21.5 L6.5 14 Z" fill="${fill}" stroke="var(--background)" stroke-width="1.5" stroke-linejoin="round" />`;
+    shape = ghost
+      ? `<path d="M14 6.5 L21.5 14 L14 21.5 L6.5 14 Z" fill="none" stroke="${fill}" stroke-width="2" stroke-linejoin="round" />`
+      : `<path d="M14 6.5 L21.5 14 L14 21.5 L6.5 14 Z" fill="${fill}" stroke="var(--background)" stroke-width="1.5" stroke-linejoin="round" />`;
   }
   const severityRing = severity
     ? `<circle cx="14" cy="14" r="11" fill="none" stroke="${SEVERITY_VARS[severity]}" stroke-width="1.5" stroke-dasharray="3 2.5" />`
     : "";
-  // Selection: filled halo + solid double-weight ring — unmissable on the chart
+  // Selection: target-designation reticle — corner brackets clear of the
+  // severity ring (distinct SHAPE, no radius collision), plus a faint halo
+  const b = 2.2; // bracket inset from the viewBox edge
+  const len = 6; // bracket arm length
   const selectionRing = selected
-    ? `<circle cx="14" cy="14" r="13" fill="var(--selection-token)" fill-opacity="0.18" />` +
-      `<circle cx="14" cy="14" r="13" fill="none" stroke="var(--selection-token)" stroke-width="2.2" />`
+    ? `<circle cx="14" cy="14" r="13" fill="var(--selection-token)" fill-opacity="0.12" />` +
+      `<g stroke="var(--selection-token)" stroke-width="2.4" fill="none" stroke-linecap="round">` +
+      `<path d="M${b} ${b + len} V${b} H${b + len}" />` +
+      `<path d="M${28 - b - len} ${b} H${28 - b} V${b + len}" />` +
+      `<path d="M${28 - b} ${28 - b - len} V${28 - b} H${28 - b - len}" />` +
+      `<path d="M${b + len} ${28 - b} H${b} V${28 - b - len}" />` +
+      `</g>`
     : "";
   return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" aria-hidden="true">${selectionRing}${severityRing}${shape}</svg>`;
 }

@@ -167,3 +167,59 @@
 .vessel-marker--selected {
   filter: drop-shadow(0 0 7px var(--selection-token));
 }
+/* Designation ping: a slow expanding ring — the only moving thing on the map */
+.vessel-ping {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 2px solid var(--selection-token);
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: varde-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes varde-ping {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  80%,
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vessel-ping {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+/* Alarm blink — ATC discipline: blinking means exactly one thing, an
+   unacknowledged critical. Discrete on/off, not a fade. */
+@keyframes varde-alarm {
+  0%,
+  54% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0.25;
+  }
+}
+.alarm-blink {
+  animation: varde-alarm 1.2s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .alarm-blink {
+    animation: none;
+  }
+}
+
+/* Spotlight: with a selection active, background traffic steps back */
+.map-has-selection .vessel-marker:not(.vessel-marker--selected) {
+  opacity: 0.55;
+  transition: opacity 150ms ease;
+}

@@ -47,10 +47,13 @@ const HORTEN: [number, number] = [10.51, 59.4265];
 const MOSS: [number, number] = [10.6495, 59.428];
 
 export const SCENARIO_VESSELS: ScenarioVessel[] = [
-  // Ferry Horten→Moss→Horten, passing south of Bastøy
+  // Ferry Horten→Moss→Horten, passing south of Bastøy. The Bastø ferries
+  // carry their REAL names: the depicted route is their actual daily route
+  // and they trigger no events. Vessels tied to threat behaviour are always
+  // fictional — real identities are never attached to constructed events.
   {
     mmsi: 257100101,
-    name: "BASTHOLM I",
+    name: "BASTØ ELECTRIC",
     shipType: 60,
     legs: [
       { t: -300, lon: HORTEN[0], lat: HORTEN[1] },
@@ -68,7 +71,7 @@ export const SCENARIO_VESSELS: ScenarioVessel[] = [
   // Ferry Moss→Horten, opposite phase
   {
     mmsi: 257100102,
-    name: "BASTHOLM IV",
+    name: "BASTØ IV",
     shipType: 60,
     legs: [
       { t: -300, lon: MOSS[0], lat: MOSS[1] },
@@ -235,7 +238,7 @@ export const SCENARIO_ENRICHMENT: Record<string, VesselEnrichment> = {
   "ais:626400401": { builtYear: 2003, insurance: "utløpt", sanctionsMatch: true }, // VESTBRIS
   "ais:257400403": { builtYear: 2008, insurance: "ukjent", sanctionsMatch: false }, // KORSVIK
   "ais:257300304": { builtYear: 2006, insurance: "i-orden", sanctionsMatch: false }, // GRÅHOLM
-  "ais:257100101": { builtYear: 2016, insurance: "i-orden", sanctionsMatch: false },
+  "ais:257100101": { builtYear: 2021, insurance: "i-orden", sanctionsMatch: false },
   "ais:257100102": { builtYear: 2017, insurance: "i-orden", sanctionsMatch: false },
   "ais:257200201": { builtYear: 1998, insurance: "i-orden", sanctionsMatch: false }, // FALKVIK
   "ais:257300301": { builtYear: 2011, insurance: "i-orden", sanctionsMatch: false },

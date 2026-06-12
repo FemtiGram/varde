@@ -8,6 +8,7 @@ import { AppRail } from "./app-rail";
 import { ContactSheet } from "./contact-sheet";
 import { EventBoard } from "./event-board";
 import { EventList } from "./event-list";
+import { JournalView } from "./journal-view";
 import { MapLayersControl } from "./map-layers-control";
 
 // MapLibre needs the browser; skip SSR for the map only
@@ -50,6 +51,12 @@ export function OperationsView() {
           {view === "board" && (
             <main className="h-full min-h-0" aria-label="Beslutningstavle">
               <EventBoard />
+            </main>
+          )}
+
+          {view === "journal" && (
+            <main className="h-full min-h-0" aria-label="Journal">
+              <JournalView />
             </main>
           )}
         </div>

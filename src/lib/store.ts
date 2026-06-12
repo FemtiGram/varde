@@ -8,6 +8,7 @@ import type {
   Contact,
   DataMode,
   EventDecision,
+  JournalEntry,
   OperatorEvent,
   PositionReport,
 } from "./types";
@@ -33,21 +34,27 @@ interface AppState {
   contacts: Record<string, Contact>;
   events: OperatorEvent[];
   decisions: Record<string, DecisionRecord>;
+  /** Operator journal (vaktjournal): every decision and undo, timestamped */
+  journal: JournalEntry[];
+  /** Last time each decided event id was seen in derivation — drives retention */
+  decisionLastSeen: Record<string, number>;
+  /** Events the operator has looked at or decided — unseen criticals blink (ATC alarm discipline) */
+  seenEvents: Record<string, true>;
   selectedContactId: string | null;
   selectedEventId: string | null;
   /** Bumped whenever the map should fly to the selected contact (list/drawer driven) */
   focusNonce: number;
   /** Infrastructure layer (cable corridors) visibility */
   showInfrastructure: boolean;
-  /** Active workspace view: operational map or the decision board */
-  view: "map" | "board";
+  /** Active workspace view: map, decision board or the operator journal */
+  view: "map" | "board" | "journal";
   /** Operator-adjustable height of the contact bottom sheet (px) */
   sheetHeight: number;
   /** Greyscale basemap — desaturated chart so vessels and overlays pop */
   mapGreyscale: boolean;
 
   setMode: (mode: DataMode) => void;
-  setView: (view: "map" | "board") => void;
+  setView: (view: "map" | "board" | "journal") => void;
   setSheetHeight: (px: number) => void;
   setMapGreyscale: (on: boolean) => void;
   setLiveStatus: (status: LiveStatus) => void;
@@ -117,6 +124,30 @@ function buildContacts(
   return contacts;
 }
 
+/**
+ * Keep decisions for active events; decisions whose event has not been derived
+ * for decisionRetentionMinutes are pruned (the journal keeps the record).
+ */
+function pruneDecisions(
+  decisions: Record<string, DecisionRecord>,
+  lastSeen: Record<string, number>,
+  derived: { id: string }[],
+  nowMs: number
+): { decisions: Record<string, DecisionRecord>; lastSeen: Record<string, number> } {
+  const derivedIds = new Set(derived.map((d) => d.id));
+  const nextSeen: Record<string, number> = {};
+  const nextDecisions: Record<string, DecisionRecord> = {};
+  const retentionMs = THRESHOLDS.decisionRetentionMinutes * 60_000;
+  for (const id of Object.keys(decisions)) {
+    const seen = derivedIds.has(id) ? nowMs : (lastSeen[id] ?? nowMs);
+    if (nowMs - seen <= retentionMs) {
+      nextDecisions[id] = decisions[id];
+      nextSeen[id] = seen;
+    }
+  }
+  return { decisions: nextDecisions, lastSeen: nextSeen };
+}
+
 function mergeDecisions(
   derived: ReturnType<typeof deriveEvents>,
   decisions: Record<string, DecisionRecord>
@@ -139,12 +170,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   contacts: {},
   events: [],
   decisions: {},
+  journal: [],
+  decisionLastSeen: {},
+  seenEvents: {},
   selectedContactId: null,
   selectedEventId: null,
   focusNonce: 0,
   showInfrastructure: true,
   view: "map",
-  sheetHeight: 300,
+  sheetHeight: 360,
   mapGreyscale: true,
 
   setView: (view) => set({ view }),
@@ -177,6 +211,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       contacts: {},
       events: [],
       decisions: {},
+      decisionLastSeen: {},
+      seenEvents: {},
       selectedContactId: null,
       selectedEventId: null,
     }),
@@ -184,21 +220,51 @@ export const useAppStore = create<AppState>((set, get) => ({
   ingestReports: (reports, nowMs, replace) => {
     const contacts = buildContacts(get().contacts, reports, nowMs, replace);
     const derived = deriveEvents(Object.values(contacts), new Date(nowMs));
+    const pruned = pruneDecisions(
+      get().decisions,
+      get().decisionLastSeen,
+      derived,
+      nowMs
+    );
     set({
       contacts,
       nowMs,
-      events: mergeDecisions(derived, get().decisions),
+      decisions: pruned.decisions,
+      decisionLastSeen: pruned.lastSeen,
+      events: mergeDecisions(derived, pruned.decisions),
     });
   },
 
   refresh: (nowMs) => {
     const derived = deriveEvents(Object.values(get().contacts), new Date(nowMs));
-    set({ nowMs, events: mergeDecisions(derived, get().decisions) });
+    const pruned = pruneDecisions(
+      get().decisions,
+      get().decisionLastSeen,
+      derived,
+      nowMs
+    );
+    set({
+      nowMs,
+      decisions: pruned.decisions,
+      decisionLastSeen: pruned.lastSeen,
+      events: mergeDecisions(derived, pruned.decisions),
+    });
   },
 
   selectContact: (contactId) =>
     set((s) => ({
       selectedContactId: contactId,
+      seenEvents:
+        contactId == null
+          ? s.seenEvents
+          : {
+              ...s.seenEvents,
+              ...Object.fromEntries(
+                s.events
+                  .filter((e) => e.contactId === contactId)
+                  .map((e) => [e.id, true as const])
+              ),
+            },
       // Keep the selected event only if it belongs to the newly selected contact
       selectedEventId:
         contactId != null &&
@@ -217,6 +283,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedEventId: eventId,
       selectedContactId: event ? event.contactId : get().selectedContactId,
       focusNonce: get().focusNonce + 1,
+      seenEvents: { ...get().seenEvents, [eventId]: true },
     });
   },
 
@@ -230,7 +297,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     } else {
       decisions[eventId] = { decision, decidedAt: new Date().toISOString() };
     }
+    const event = get().events.find((e) => e.id === eventId);
+    const entry: JournalEntry = {
+      ts: new Date().toISOString(),
+      eventId,
+      contactName: event?.contactName ?? null,
+      mmsi: event?.mmsi ?? null,
+      eventType: event?.type ?? null,
+      action: decision,
+    };
     set({
+      journal: [...get().journal, entry].slice(-500),
+      seenEvents: { ...get().seenEvents, [eventId]: true },
       decisions,
       events: get().events.map((e) =>
         e.id === eventId

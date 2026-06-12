@@ -37,9 +37,11 @@ export function AboutDialog() {
           </p>
           <p>
             <strong>Scenariomodus</strong> er en konstruert, deterministisk
-            avspilling laget for demo: fartøyene, navnene og hendelsene er
-            fiktive, men følger realistiske mønstre i Oslofjorden. Avspillingen
-            går raskere enn sanntid.
+            avspilling laget for demo. Bastø-fergene bærer sine virkelige navn
+            fordi den viste ruten er deres faktiske daglige rute og de ikke
+            utløser hendelser; alle fartøy knyttet til hendelser er fiktive —
+            reelle identiteter knyttes aldri til konstruert atferd.
+            Avspillingen går raskere enn sanntid.
           </p>
           <p>
             <strong>Hendelseslogikken</strong> (AIS-bortfall, AIS-sprang, lav

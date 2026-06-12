@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DecisionActions } from "@/components/decision-actions";
-import { ScoreFactors } from "@/components/score-factors";
+import { ScoreBadge, ScoreFactors } from "@/components/score-factors";
 import { EventRow } from "@/components/event-list";
 import { StatusPill } from "@/components/status-pill";
 import { VesselGlyph } from "@/components/vessel-marker";
@@ -112,19 +112,19 @@ const UX_LAWS = [
     name: "Hicks lov",
     principle: "Beslutningstid øker med antall og kompleksitet av valg.",
     applied:
-      "Hver hendelse har nøyaktig tre beslutninger — bekreft, avvis, eskaler — pluss angre. Aldri flere.",
+      "Hver hendelse har nøyaktig tre beslutninger — kvitter, avvis, eskaler — pluss angre. Aldri flere.",
   },
   {
     name: "Fitts' lov",
     principle: "Tid for å treffe et mål avhenger av avstand og størrelse.",
     applied:
-      "Beslutningsknappene ligger i selve hendelsesraden der blikket allerede er, og hurtigtaster (B/X/E/U) fjerner avstanden helt.",
+      "Beslutningsknappene ligger i selve hendelsesraden der blikket allerede er, og hurtigtaster (K/X/E/U) fjerner avstanden helt.",
   },
   {
     name: "Millers lov",
     principle: "Arbeidsminnet holder rundt 7±2 enheter — gruppér innhold.",
     applied:
-      "Køen er delt i «Krever vurdering» og «Håndtert», tavlen i fire kolonner, og scorefaktorene grupperes i tre bidrag (grunnscore, kontekst, atferd) med en proporsjonslinje.",
+      "Køen er delt i «Krever vurdering» og «Håndtert», tavlen i fire kolonner, og scoreforklaringen ligger bak selve score-tallet (progressiv avdekking) i stedet for å belaste hvert kort.",
   },
   {
     name: "Von Restorff-effekten",
@@ -347,9 +347,12 @@ export default function DesignSystemPage() {
           <p className="text-sm text-muted-foreground">
             Status kodes med form først, farge etterpå: pil = i fart (rotert
             mot kurs), diamant = stilleliggende, stiplet ring = aktiv hendelse,
-            fylt glorie + hel ring = valgt. Fargespråket er fast i begge
-            kartmoduser: grønn = normal trafikk, rød/gul/blå = alvorsgrad,
-            cyan = valgt, nesten hvit stiplet = kontakt uten AIS.
+            siktebraketter + puls = valgt (i kartet dempes samtidig øvrig
+            trafikk), hul kontur = mørkt fartøy vist på sist kjente posisjon.
+            Blink er reservert for én tilstand: en ukvittert kritisk hendelse
+            (ATC-disiplin) — kvitteringen stopper blinkingen. Fargespråket er fast i begge kartmoduser: grønn = normal
+            trafikk, rød/gul/blå = alvorsgrad, cyan = valgt, fylt sirkel med
+            senterhull = kontakt uten AIS.
           </p>
           <div className="grid grid-cols-2 gap-4 rounded-md border p-4 sm:grid-cols-3">
             <MarkerSample label="I fart, normal">
@@ -369,6 +372,9 @@ export default function DesignSystemPage() {
             </MarkerSample>
             <MarkerSample label="Hendelse + valgt">
               <VesselGlyph moving headingDeg={210} severity="warning" selected size={34} />
+            </MarkerSample>
+            <MarkerSample label="Mørkt fartøy — LKP (hul kontur)">
+              <VesselGlyph moving headingDeg={75} severity="critical" selected={false} ghost size={34} />
             </MarkerSample>
             <MarkerSample label="Kontakt uten AIS (sensor)">
               <VesselGlyph source="sensor" moving headingDeg={null} severity={null} selected={false} size={34} />
@@ -439,11 +445,10 @@ export default function DesignSystemPage() {
             <ScoreFactors
               factors={[...SAMPLE_EVENT.factors]}
               score={SAMPLE_EVENT.score}
-              variant="full"
             />
-            <p className="mt-3 text-xs text-muted-foreground">
-              Kompaktvarianten (topp 3 + «flere») brukes i hendelseskøen — se
-              raden over.
+            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              I appen ligger forklaringen bak selve score-tallet:
+              <ScoreBadge factors={[...SAMPLE_EVENT.factors]} score={SAMPLE_EVENT.score} />
             </p>
           </div>
 
@@ -451,12 +456,25 @@ export default function DesignSystemPage() {
             Beslutningshandlinger
           </h3>
           <div className="flex flex-col gap-3 rounded-md border p-4">
-            <DecisionActions
-              event={{ ...SAMPLE_EVENT, id: "demo:actions", decision: "none", decidedAt: null }}
-            />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">
+                Kritisk hendelse — scoringen peker mot eskalering:
+              </span>
+              <DecisionActions
+                event={{ ...SAMPLE_EVENT, id: "demo:actions", decision: "none", decidedAt: null }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">
+                Øvrige hendelser — bekreft er det trygge standardvalget:
+              </span>
+              <DecisionActions
+                event={{ ...SAMPLE_EVENT, id: "demo:actions-warning", severity: "warning", decision: "none", decidedAt: null }}
+              />
+            </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               Hurtigtaster i listen:
-              <span className="inline-flex items-center gap-1"><Kbd>B</Kbd> bekreft</span>
+              <span className="inline-flex items-center gap-1"><Kbd>K</Kbd> kvitter</span>
               <span className="inline-flex items-center gap-1"><Kbd>X</Kbd> avvis</span>
               <span className="inline-flex items-center gap-1"><Kbd>E</Kbd> eskaler</span>
               <span className="inline-flex items-center gap-1"><Kbd>U</Kbd> angre</span>

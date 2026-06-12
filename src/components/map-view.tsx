@@ -12,6 +12,7 @@ import {
 } from "@/lib/config";
 import { useAppStore } from "@/lib/store";
 import type { Contact, EventSeverity } from "@/lib/types";
+import { formatClockShort } from "@/lib/format";
 import { shipTypeLabel } from "@/lib/ship-types";
 import { vesselGlyphSvg } from "./vessel-marker";
 
@@ -157,17 +158,17 @@ export function MapView() {
         id: "corridors-fill",
         type: "fill",
         source: "corridors",
-        paint: { "fill-color": "#d96bc8", "fill-opacity": 0.07 },
+        paint: { "fill-color": "#b53f9e", "fill-opacity": 0.09 },
       });
       map.addLayer({
         id: "corridors-line",
         type: "line",
         source: "corridors",
         paint: {
-          "line-color": "#d96bc8",
-          "line-width": 1.5,
+          "line-color": "#b53f9e",
+          "line-width": 1.8,
           "line-dasharray": [1.5, 2, 6, 2],
-          "line-opacity": 0.8,
+          "line-opacity": 0.95,
         },
       });
       for (const corridor of CORRIDORS) {
@@ -198,17 +199,17 @@ export function MapView() {
         id: "zones-fill",
         type: "fill",
         source: "zones",
-        paint: { "fill-color": "#5ec1d8", "fill-opacity": 0.08 },
+        paint: { "fill-color": "#2f8fa6", "fill-opacity": 0.1 },
       });
       map.addLayer({
         id: "zones-line",
         type: "line",
         source: "zones",
         paint: {
-          "line-color": "#5ec1d8",
-          "line-width": 1.5,
+          "line-color": "#2f8fa6",
+          "line-width": 1.8,
           "line-dasharray": [6, 3],
-          "line-opacity": 0.7,
+          "line-opacity": 0.9,
         },
       });
       for (const zone of ZONES) {
@@ -222,10 +223,39 @@ export function MapView() {
           .addTo(map);
       }
 
+      // Highlight overlays for the zone/corridor implicated by the selected
+      // event (filter swapped in the sync pass)
+      map.addLayer({
+        id: "zones-highlight",
+        type: "line",
+        source: "zones",
+        filter: ["==", ["get", "id"], ""],
+        paint: { "line-color": "#2f8fa6", "line-width": 3.5, "line-opacity": 1 },
+      });
+      map.addLayer({
+        id: "corridors-highlight",
+        type: "line",
+        source: "corridors",
+        filter: ["==", ["get", "id"], ""],
+        paint: { "line-color": "#b53f9e", "line-width": 3.5, "line-opacity": 1 },
+      });
+
       // Selected contact's recent track
       map.addSource("track", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
+      });
+      // Casing first: the bright trail alone is ~1.7:1 against the light
+      // chart water; the dark edge supplies the WCAG 1.4.11 contrast boundary
+      map.addLayer({
+        id: "track-line-casing",
+        type: "line",
+        source: "track",
+        paint: {
+          "line-color": "#10181f",
+          "line-width": 4.5,
+          "line-opacity": 0.9,
+        },
       });
       map.addLayer({
         id: "track-line",
@@ -233,8 +263,8 @@ export function MapView() {
         source: "track",
         paint: {
           "line-color": "#7fd6e8",
-          "line-width": 1.5,
-          "line-opacity": 0.85,
+          "line-width": 2,
+          "line-opacity": 1,
         },
       });
     });
@@ -265,7 +295,26 @@ export function MapView() {
         nowMs,
         showInfrastructure,
         mapGreyscale,
+        sheetHeight,
       } = useAppStore.getState();
+
+      // Light up the zone/corridor named by the selected event, so the
+      // threat-to-asset link is visible, not just described in text
+      const selectedEvent = events.find(
+        (e) => e.id === useAppStore.getState().selectedEventId
+      );
+      const hlId = selectedEvent?.zoneId ?? "";
+      for (const layerId of ["zones-highlight", "corridors-highlight"]) {
+        if (map.getLayer(layerId)) {
+          map.setFilter(layerId, ["==", ["get", "id"], hlId]);
+        }
+      }
+
+      // Spotlight: while a contact is selected, background traffic steps back
+      map.getContainer().classList.toggle(
+        "map-has-selection",
+        selectedContactId != null
+      );
 
       // Basemap greyscale: a fully desaturated chart lets markers, zones and
       // corridors carry all the colour
@@ -289,13 +338,19 @@ export function MapView() {
         label.getElement().style.display = showInfrastructure ? "" : "none";
       }
 
-      // Highest undismissed severity per contact
+      // Highest undismissed severity per contact + alarm state: a critical
+      // event nobody has seen or decided blinks (ATC alarm discipline)
+      const seenEvents = useAppStore.getState().seenEvents;
       const severityByContact = new Map<string, EventSeverity>();
+      const alarmContacts = new Set<string>();
       for (const e of events) {
         if (e.decision === "dismissed") continue;
         const current = severityByContact.get(e.contactId);
         if (!current || SEVERITY_RANK[e.severity] > SEVERITY_RANK[current]) {
           severityByContact.set(e.contactId, e.severity);
+        }
+        if (e.severity === "critical" && e.decision === "none" && !seenEvents[e.id]) {
+          alarmContacts.add(e.contactId);
         }
       }
 
@@ -315,16 +370,23 @@ export function MapView() {
           nowMs - new Date(contact.latest.msgtime).getTime() >
           THRESHOLDS.aisGapMinutes * 60_000;
         const isSensor = contact.source !== "ais";
-        // Non-AIS contacts are always labelled — they are the signal
-        const showLabel = Boolean(severity) || selected || isSensor;
-        const name =
+        const alarm = alarmContacts.has(contact.id);
+        // A stale AIS contact renders as a ghost at last known position
+        const ghost = stale && !isSensor;
+        // Non-AIS contacts and dark vessels are always labelled — they are the signal
+        const showLabel = Boolean(severity) || selected || isSensor || ghost;
+        const baseName =
           contact.name ?? (isSensor ? "UKJENT KONTAKT" : String(contact.mmsi));
+        const name = ghost
+          ? `${baseName} · LKP ${formatClockShort(contact.latest.msgtime)}`
+          : baseName;
         const key = [
           severity,
           selected,
           moving,
           heading == null ? "" : Math.round(heading),
           stale,
+          alarm,
           showLabel,
           name,
         ].join("|");
@@ -361,16 +423,20 @@ export function MapView() {
             headingDeg: heading,
             severity,
             selected,
+            ghost,
             size: selected ? 36 : severity || isSensor ? 30 : 24,
           });
           const label = showLabel
-            ? `<span style="font: ${selected ? 600 : 500} 12px var(--font-geist-mono); color: ${
-                selected ? "var(--selection-token)" : "var(--foreground)"
-              }; background: rgba(20,28,34,0.85); padding: 1px 5px; border-radius: 3px; white-space: nowrap;${
-                isSensor ? "border: 1px dashed var(--contact-unknown);" : ""
-              }${selected ? "border: 1px solid var(--selection-token);" : ""}">${name}</span>`
+            ? `<span style="font: ${selected ? 600 : 500} 12px var(--font-geist-mono); ${
+                selected
+                  ? "color: var(--background); background: var(--selection-token);"
+                  : "color: var(--foreground); background: rgba(20,28,34,0.85);"
+              } padding: 1px 5px; border-radius: 3px; white-space: nowrap;${
+                isSensor && !selected ? "border: 1px dashed var(--contact-unknown);" : ""
+              }">${name}</span>`
             : "";
-          entry.el.innerHTML = `<span style="opacity:${stale && !isSensor ? 0.45 : 1}; display:block; line-height:0;">${glyph}</span>${label}`;
+          const ping = selected ? `<span class="vessel-ping" aria-hidden="true"></span>` : "";
+          entry.el.innerHTML = `<span class="${alarm ? "alarm-blink" : ""}" style="position:relative; opacity:${ghost ? 0.85 : 1}; display:block; line-height:0;">${ping}${glyph}</span>${label}`;
           entry.el.setAttribute(
             "aria-label",
             isSensor
@@ -379,8 +445,9 @@ export function MapView() {
                   severity ? ", aktiv hendelse" : ""
                 }`
           );
-          // Event/selected/sensor contacts sit above background traffic
-          entry.el.style.zIndex = severity || selected || isSensor ? "3" : "1";
+          // Selected stacks above all, incl. zone/corridor labels; then
+          // event/sensor contacts, then background traffic
+          entry.el.style.zIndex = selected ? "6" : severity || isSensor ? "3" : "1";
         }
       }
 
@@ -416,7 +483,9 @@ export function MapView() {
         );
       }
 
-      // List/drawer-driven focus
+      // List/board/sheet-driven focus: fly close and centre the contact in
+      // the VISIBLE map area — the bottom sheet covers the lower part, so the
+      // centre is offset upward by half the sheet height
       if (focusNonce !== lastFocusNonce.current) {
         lastFocusNonce.current = focusNonce;
         const target =
@@ -424,8 +493,9 @@ export function MapView() {
         if (target) {
           map.easeTo({
             center: [target.latest.longitude, target.latest.latitude],
-            zoom: Math.max(map.getZoom(), 11.5),
-            duration: 600,
+            zoom: Math.max(map.getZoom(), 13),
+            offset: [0, -sheetHeight / 2],
+            duration: 800,
           });
         }
       }

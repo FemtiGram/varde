@@ -4,10 +4,11 @@ import { ArrowUpRight, Check, MapPin, RotateCcw, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { EVENT_TYPE_LABELS, formatAge } from "@/lib/format";
+import { DECISION_LABELS, EVENT_TYPE_LABELS, formatAge, formatClockShort } from "@/lib/format";
 import { useAppStore } from "@/lib/store";
 import type { EventDecision, EventSeverity, OperatorEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ScoreBadge } from "./score-factors";
 import { StatusPill } from "./status-pill";
 
 /**
@@ -17,10 +18,12 @@ import { StatusPill } from "./status-pill";
  * call the same store action, and every move is reversible.
  */
 
+// Ordered by urgency of ownership: new work, then live responsibility
+// (escalated, awaiting follow-up), then stable monitoring, then closed.
 const COLUMNS: { decision: EventDecision; title: string; hint: string }[] = [
   { decision: "none", title: "Ny", hint: "Krever vurdering" },
-  { decision: "acknowledged", title: "Bekreftet", hint: "Sett og følges" },
   { decision: "escalated", title: "Eskalert", hint: "Sendt til vaktleder" },
+  { decision: "acknowledged", title: "Kvittert", hint: "Sett og følges" },
   { decision: "dismissed", title: "Avvist", hint: "Ikke relevant" },
 ];
 
@@ -149,9 +152,7 @@ function BoardCard({ event, nowMs }: { event: OperatorEvent; nowMs: number }) {
           {event.contactName ?? "UKJENT KONTAKT"}
         </span>
         <span className="flex shrink-0 items-baseline gap-2">
-          <span className="rounded-sm border bg-background/60 px-1 font-mono text-xs tabular-nums text-muted-foreground">
-            {event.score}
-          </span>
+          <ScoreBadge factors={event.factors} score={event.score} />
           <span className="font-mono text-xs text-muted-foreground">
             {formatAge(event.startedAt, nowMs)}
           </span>
@@ -166,9 +167,14 @@ function BoardCard({ event, nowMs }: { event: OperatorEvent; nowMs: number }) {
       <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">
         {event.reason}
       </p>
+      {event.decidedAt && (
+        <p className="mt-1 font-mono text-xs text-muted-foreground">
+          {DECISION_LABELS[event.decision]} kl. {formatClockShort(event.decidedAt)}
+        </p>
+      )}
       <div className="mt-2 flex items-center justify-between gap-1">
         <div className="flex items-center gap-1">
-          {moveButton("acknowledged", "Flytt til Bekreftet (B)", Check)}
+          {moveButton("acknowledged", "Flytt til Kvittert (K)", Check)}
           {moveButton(
             "escalated",
             "Flytt til Eskalert (E)",

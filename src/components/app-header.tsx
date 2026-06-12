@@ -4,6 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { THRESHOLDS } from "@/lib/config";
 import { formatClock } from "@/lib/format";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ export function AppHeader() {
 
   const statusText =
     mode === "scenario"
-      ? "Scenario · konstruerte data"
+      ? `Scenario · konstruerte data · ${THRESHOLDS.scenarioSpeedup}× hastighet`
       : liveStatus === "ok"
         ? "Direkte · BarentsWatch"
         : liveStatus === "connecting"
@@ -95,6 +96,19 @@ export function AppHeader() {
           suppressHydrationWarning
         >
           {formatClock(nowMs)}
+          {/* suppressHydrationWarning is per-element — the nested span needs its own */}
+          <span
+            className="ml-2 text-muted-foreground"
+            aria-label="UTC-tid"
+            suppressHydrationWarning
+          >
+            {new Date(nowMs).toLocaleTimeString("nb-NO", {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "UTC",
+            })}
+            Z
+          </span>
         </span>
         <AboutDialog />
       </div>

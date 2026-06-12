@@ -100,6 +100,12 @@ export const THRESHOLDS = {
   serverCacheMs: 20_000,
   /** Scenario replay speed multiplier (scenario seconds per wall-clock second) */
   scenarioSpeedup: 12,
+  /**
+   * How long a decision is kept after its event's condition has lapsed
+   * (minutes). The journal keeps the permanent record; this only bounds the
+   * working state. Real systems hand decisions over between watches instead.
+   */
+  decisionRetentionMinutes: 120,
 } as const;
 
 /**

@@ -97,3 +97,31 @@ for (const L of [0.7, 0.72, 0.74]) {
     console.log(`L=${L} tint=${alpha}: chip ${ratio(crit, chip).toFixed(2)}:1, bg ${ratio(crit, T.background).toFixed(2)}:1`);
   }
 }
+
+/* ---- Map overlays: contrast vs the CHART (light water), not the dark UI ----
+   WCAG 1.4.11 non-text contrast: 3:1 required for meaningful graphics. */
+function hexToLinear(hex: string): number[] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+}
+const WHITE = [1, 1, 1];
+const GREY_WATER = hexToLinear("#ebebeb"); // greyscale-mode water tone
+const overlays: [string, string][] = [
+  // sporlinjen (#7fd6e8) får mørk kantlinje (casing) — kanten bærer kontrasten
+  ["#2f8fa6", "sonelinje"],
+  ["#b53f9e", "korridorlinje"],
+];
+console.log("\nKartoverlegg mot sjøkartets vannflate (krav 3:1 grafikk):");
+for (const [hex, what] of overlays) {
+  const c = hexToLinear(hex);
+  const rWhite = ratio(c, WHITE);
+  const rGrey = ratio(c, GREY_WATER);
+  const ok = rWhite >= 3 && rGrey >= 3;
+  console.log(
+    `${ok ? "✓" : "✗"} ${what} ${hex}: ${rWhite.toFixed(2)}:1 mot hvitt, ${rGrey.toFixed(2)}:1 mot gråtonevann`
+  );
+}
+

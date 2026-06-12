@@ -1,6 +1,6 @@
 "use client";
 
-import { Map as MapIcon, Palette, SquareKanban } from "lucide-react";
+import { Map as MapIcon, Palette, ScrollText, SquareKanban } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -51,6 +51,13 @@ export function AppRail() {
               {openCount}
             </span>
           )}
+        </RailButton>
+        <RailButton
+          label="Journal — beslutningslogg"
+          active={view === "journal"}
+          onClick={() => setView("journal")}
+        >
+          <ScrollText aria-hidden className="size-5" />
         </RailButton>
         <Separator className="my-1 w-7" />
         <Tooltip>

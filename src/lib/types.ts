@@ -114,3 +114,15 @@ export interface VesselEnrichment {
 }
 
 export type DataMode = "live" | "scenario";
+
+/** One line in the operator journal (vaktjournal): who decided what, when. */
+export interface JournalEntry {
+  /** Wall-clock ISO timestamp of the operator action */
+  ts: string;
+  eventId: string;
+  contactName: string | null;
+  mmsi: number | null;
+  eventType: EventType | null;
+  /** The decision taken; "none" means a decision was undone */
+  action: EventDecision;
+}

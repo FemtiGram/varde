@@ -48,7 +48,7 @@ export const SEVERITY_LABELS: Record<EventSeverity, string> = {
 
 export const DECISION_LABELS = {
   none: "Ikke vurdert",
-  acknowledged: "Bekreftet",
+  acknowledged: "Kvittert",
   dismissed: "Avvist",
   escalated: "Eskalert",
 } as const;

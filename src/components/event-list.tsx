@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Kbd } from "@/components/ui/kbd";
@@ -10,21 +11,21 @@ import { useAppStore } from "@/lib/store";
 import type { EventSeverity, OperatorEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DecisionActions } from "./decision-actions";
-import { ScoreFactors } from "./score-factors";
+import { ScoreBadge } from "./score-factors";
 import { StatusPill } from "./status-pill";
 
 /**
  * The prioritised queue. Highest score first; decided events drop into a
  * separate "handled" group below so the top of the list is always the answer
- * to "what needs me right now?". Selecting an event reveals its full factor
- * breakdown — the score is explainable, never a black box.
+ * to "what needs me right now?". The score chip opens the full factor
+ * breakdown on demand — explainable, but not in the way.
  *
  * Visual hierarchy (scan order): severity strip + pill → vessel → event type
  * → reason → metadata. Severity is triple-coded: colour strip, icon shape,
  * text label.
  *
  * Keyboard model: ↑/↓ move through events, Enter/Space selects (and focuses
- * the contact on the map), B/X/E decide, U undoes, Esc clears selection.
+ * the contact on the map), K/X/E decide, U undoes, Esc clears selection.
  */
 export function EventList() {
   const events = useAppStore((s) => s.events);
@@ -32,15 +33,63 @@ export function EventList() {
   const selectEvent = useAppStore((s) => s.selectEvent);
   const decide = useAppStore((s) => s.decide);
   const nowMs = useAppStore((s) => s.nowMs);
+  const seenEvents = useAppStore((s) => s.seenEvents);
+  const contacts = useAppStore((s) => s.contacts);
+  const focusContact = useAppStore((s) => s.focusContact);
   const listRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState("");
+  // EVE-overview-style filter: toggle severities in/out of the picture
+  const [sevFilter, setSevFilter] = useState<Record<EventSeverity, boolean>>({
+    critical: true,
+    warning: true,
+    info: true,
+  });
+
+  // "/" focuses the search from anywhere in the workspace
+  useEffect(() => {
+    function onSlash(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (e.key !== "/" || target.closest("input, textarea, [contenteditable]")) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    }
+    window.addEventListener("keydown", onSlash);
+    return () => window.removeEventListener("keydown", onSlash);
+  }, []);
+
+  const q = query.trim().toLowerCase();
 
   const { queue, handled } = useMemo(() => {
-    const queue = events.filter((e) => e.decision === "none");
-    const handled = events
+    const matches = (e: OperatorEvent) =>
+      q === "" ||
+      (e.contactName ?? "").toLowerCase().includes(q) ||
+      String(e.mmsi ?? "").includes(q) ||
+      EVENT_TYPE_LABELS[e.type].toLowerCase().includes(q) ||
+      (areaName(e.zoneId) ?? "").toLowerCase().includes(q);
+    const visible = events.filter((e) => sevFilter[e.severity] && matches(e));
+    const queue = visible.filter((e) => e.decision === "none");
+    const handled = visible
       .filter((e) => e.decision !== "none")
       .sort((a, b) => (b.decidedAt ?? "").localeCompare(a.decidedAt ?? ""));
     return { queue, handled };
-  }, [events]);
+  }, [events, q, sevFilter]);
+
+  // Contacts matching the query that have no matching event — find any vessel
+  const contactHits = useMemo(() => {
+    if (q === "") return [];
+    const represented = new Set(
+      [...queue, ...handled].map((e) => e.contactId)
+    );
+    return Object.values(contacts)
+      .filter(
+        (c) =>
+          !represented.has(c.id) &&
+          ((c.name ?? "").toLowerCase().includes(q) ||
+            String(c.mmsi ?? "").includes(q))
+      )
+      .slice(0, 5);
+  }, [q, contacts, queue, handled]);
 
   const ordered = useMemo(() => [...queue, ...handled], [queue, handled]);
 
@@ -54,6 +103,17 @@ export function EventList() {
     );
     if (row && row !== active) row.focus();
   }, [selectedEventId]);
+
+  /** Decide and advance to the next open event — inbox-style triage flow. */
+  function decideAndAdvance(
+    current: OperatorEvent,
+    decision: "acknowledged" | "dismissed" | "escalated"
+  ) {
+    const qIdx = queue.findIndex((ev) => ev.id === current.id);
+    const next = queue[qIdx + 1] ?? queue[qIdx - 1] ?? null;
+    decide(current.id, decision);
+    selectEvent(next ? next.id : null);
+  }
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (ordered.length === 0) return;
@@ -76,25 +136,25 @@ export function EventList() {
       case "Escape":
         selectEvent(null);
         break;
-      case "b":
-      case "B":
+      case "k":
+      case "K":
         if (current && current.decision === "none") {
           e.preventDefault();
-          decide(current.id, "acknowledged");
+          decideAndAdvance(current, "acknowledged");
         }
         break;
       case "x":
       case "X":
         if (current && current.decision === "none") {
           e.preventDefault();
-          decide(current.id, "dismissed");
+          decideAndAdvance(current, "dismissed");
         }
         break;
       case "e":
       case "E":
         if (current && current.decision === "none") {
           e.preventDefault();
-          decide(current.id, "escalated");
+          decideAndAdvance(current, "escalated");
         }
         break;
       case "u":
@@ -121,16 +181,73 @@ export function EventList() {
           {queue.length} åpne
         </span>
       </header>
+      <div className="px-2 pb-2">
+        <div className="flex items-center gap-2 rounded-md border bg-background/60 px-2 focus-within:border-ring">
+          <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setQuery("");
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            placeholder="Søk fartøy, MMSI, hendelse …"
+            aria-label="Søk i hendelser og kontakter"
+            className="h-8 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <Kbd className="shrink-0">/</Kbd>
+        </div>
+        <div
+          className="mt-2 flex items-center gap-1"
+          role="group"
+          aria-label="Filtrer på alvorsgrad"
+        >
+          {(
+            [
+              ["critical", "Kritisk", "border-status-critical/50 text-status-critical"],
+              ["warning", "Advarsel", "border-status-warning/50 text-status-warning"],
+              ["info", "Info", "border-status-info/50 text-status-info"],
+            ] as [EventSeverity, string, string][]
+          ).map(([sev, label, activeClass]) => {
+            const count = events.filter((e) => e.severity === sev).length;
+            const active = sevFilter[sev];
+            return (
+              <button
+                key={sev}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setSevFilter((f) => ({ ...f, [sev]: !f[sev] }))}
+                className={cn(
+                  "flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide focus-visible:outline-2 focus-visible:outline-ring",
+                  active
+                    ? cn("bg-background/60", activeClass)
+                    : "border-transparent text-muted-foreground/60 line-through"
+                )}
+              >
+                {label}
+                <span className="font-mono tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <Separator />
       <ScrollArea className="min-h-0 flex-1">
         <div
           ref={listRef}
+          data-event-queue
           onKeyDown={onKeyDown}
           className="flex flex-col gap-1.5 p-2"
         >
-          {ordered.length === 0 && (
+          {ordered.length === 0 && contactHits.length === 0 && (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              Ingen aktive hendelser i området.
+              {q === ""
+                ? "Ingen aktive hendelser i området."
+                : `Ingen treff på «${query}».`}
             </p>
           )}
 
@@ -144,6 +261,9 @@ export function EventList() {
               key={event.id}
               event={event}
               nowMs={nowMs}
+              alarm={
+                event.severity === "critical" && !seenEvents[event.id]
+              }
               selected={event.id === selectedEventId}
               tabIndex={
                 selectedEventId
@@ -156,6 +276,29 @@ export function EventList() {
               }
             />
           ))}
+
+          {contactHits.length > 0 && (
+            <>
+              <div className="mt-2 px-2 pb-0.5 pt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Kontakter uten hendelser ({contactHits.length})
+              </div>
+              {contactHits.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => focusContact(c.id)}
+                  className="flex items-baseline justify-between gap-2 rounded-md border border-transparent px-2.5 py-1.5 text-left hover:bg-accent/60 focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <span className="truncate font-mono text-sm">
+                    {c.name ?? (c.source !== "ais" ? "UKJENT KONTAKT" : String(c.mmsi))}
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {c.mmsi ?? c.sourceLabel} · vis i kart
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
 
           {handled.length > 0 && (
             <>
@@ -179,7 +322,7 @@ export function EventList() {
       <Separator />
       <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-xs text-muted-foreground">
         <span><Kbd>↑↓</Kbd> naviger</span>
-        <span><Kbd>B</Kbd> bekreft</span>
+        <span><Kbd>K</Kbd> kvitter</span>
         <span><Kbd>X</Kbd> avvis</span>
         <span><Kbd>E</Kbd> eskaler</span>
         <span><Kbd>U</Kbd> angre</span>
@@ -209,12 +352,15 @@ export function EventRow({
   selected,
   tabIndex,
   muted = false,
+  alarm = false,
 }: {
   event: OperatorEvent;
   nowMs: number;
   selected: boolean;
   tabIndex: number;
   muted?: boolean;
+  /** Unacknowledged critical — the strip blinks until seen or decided */
+  alarm?: boolean;
 }) {
   const selectEvent = useAppStore((s) => s.selectEvent);
   const area = areaName(event.zoneId);
@@ -249,7 +395,8 @@ export function EventRow({
         className={cn(
           "absolute inset-y-1 left-1 w-[3px] rounded-full",
           STRIP_COLORS[event.severity],
-          muted && "opacity-50"
+          muted && "opacity-50",
+          alarm && "alarm-blink"
         )}
       />
 
@@ -259,13 +406,7 @@ export function EventRow({
           {event.contactName ?? "UKJENT KONTAKT"}
         </span>
         <span className="flex shrink-0 items-baseline gap-2">
-          <span
-            className="rounded-sm border bg-background/60 px-1 font-mono text-xs tabular-nums text-muted-foreground"
-            title={`Prioritetsscore ${event.score}`}
-            aria-label={`Prioritetsscore ${event.score}`}
-          >
-            {event.score}
-          </span>
+          <ScoreBadge factors={event.factors} score={event.score} />
           <span className="font-mono text-xs text-muted-foreground">
             {formatAge(event.startedAt, nowMs)}
           </span>
@@ -291,14 +432,6 @@ export function EventRow({
         </div>
       )}
 
-      {selected && (
-        <ScoreFactors
-          factors={event.factors}
-          score={event.score}
-          variant="compact"
-          className="mt-2"
-        />
-      )}
       {(selected || event.decision !== "none") && (
         <DecisionActions event={event} className="mt-2" />
       )}
