@@ -370,7 +370,6 @@ export function ContactSheet() {
                 value={`${formatClockShort(latest.msgtime)} (${formatAge(latest.msgtime, nowMs)})`}
                 className={cn("col-span-2", stale && "[&>dd]:text-status-warning")}
               />
-              <DataField label="Kilde" value={contact.sourceLabel} className="col-span-2" />
             </dl>
           ) : (
             <p className="text-sm text-muted-foreground">Ingen posisjonsdata.</p>

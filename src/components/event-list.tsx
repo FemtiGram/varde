@@ -412,7 +412,6 @@ export function EventRow({
   alarm?: boolean;
 }) {
   const selectEvent = useAppStore((s) => s.selectEvent);
-  const area = areaName(event.zoneId);
 
   return (
     <div
@@ -474,14 +473,15 @@ export function EventRow({
       <p className="mt-1 text-sm leading-snug text-muted-foreground">
         {event.reason}
       </p>
-      {(event.mmsi != null || area) && (
-        <div className="mt-0.5 flex items-baseline gap-2 text-xs text-muted-foreground">
-          {event.mmsi != null && <span className="font-mono">{event.mmsi}</span>}
-          {area && <span className="truncate">{area}</span>}
+      {event.mmsi != null && (
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          <span className="font-mono">{event.mmsi}</span>
         </div>
       )}
 
-      {(selected || event.decision !== "none") && (
+      {/* Decided state (with undo) only — undecided actions live in the sheet
+          and on the K/X/E hotkeys, so the same buttons never appear twice */}
+      {event.decision !== "none" && (
         <DecisionActions event={event} className="mt-2" />
       )}
     </div>
