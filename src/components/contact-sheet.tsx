@@ -1,6 +1,14 @@
 "use client";
 
-import { Crosshair, ExternalLink, X } from "lucide-react";
+import {
+  Crosshair,
+  ExternalLink,
+  EyeOff,
+  Flag,
+  ShieldAlert,
+  ShieldOff,
+  X,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,7 +22,11 @@ import {
   formatSpeed,
 } from "@/lib/format";
 import { formatPosition } from "@/lib/geo";
-import { riskProfile, type RiskLevel } from "@/lib/risk";
+import {
+  riskProfile,
+  type RiskLevel,
+  type RiskReasonId,
+} from "@/lib/risk";
 import { shipTypeLabel } from "@/lib/ship-types";
 import { useAppStore } from "@/lib/store";
 import type { OperatorEvent } from "@/lib/types";
@@ -202,10 +214,14 @@ export function ContactSheet() {
             </div>
           )}
           {risk && risk.reasons.length > 0 && (
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col gap-1">
               {risk.reasons.map((reason) => (
-                <li key={reason} className="text-sm leading-snug text-muted-foreground">
-                  · {reason}
+                <li
+                  key={reason.id}
+                  className="flex items-start gap-1.5 text-sm leading-snug text-muted-foreground"
+                >
+                  <RiskReasonIcon id={reason.id} />
+                  {reason.label}
                 </li>
               ))}
             </ul>
@@ -225,9 +241,21 @@ export function ContactSheet() {
                 <DataField
                   label="Flaggstat"
                   value={
-                    risk?.flag
-                      ? `${risk.flag.country ?? "Ukjent"} (${risk.flag.mid})`
-                      : "—"
+                    risk?.flag ? (
+                      <span className="flex items-center gap-1.5">
+                        {risk.flag.iso && (
+                          <span
+                            aria-hidden
+                            className={`fi fi-${risk.flag.iso} rounded-[2px]`}
+                          />
+                        )}
+                        <span className="truncate">
+                          {risk.flag.country ?? "Ukjent"} ({risk.flag.mid})
+                        </span>
+                      </span>
+                    ) : (
+                      "—"
+                    )
                   }
                 />
                 <DataField label="Type" value={shipTypeLabel(contact?.shipType ?? null)} />
@@ -247,16 +275,30 @@ export function ContactSheet() {
                 <DataField
                   label="Forsikring"
                   value={
-                    risk.enrichment.insurance === "i-orden"
-                      ? "I orden"
-                      : risk.enrichment.insurance === "utløpt"
-                        ? "Utløpt"
-                        : "Ukjent"
+                    risk.enrichment.insurance === "utløpt" ? (
+                      <span className="flex items-center gap-1 text-status-warning">
+                        <ShieldOff aria-hidden className="size-3.5 shrink-0" />
+                        Utløpt
+                      </span>
+                    ) : risk.enrichment.insurance === "i-orden" ? (
+                      "I orden"
+                    ) : (
+                      "Ukjent"
+                    )
                   }
                 />
                 <DataField
                   label="Sanksjoner"
-                  value={risk.enrichment.sanctionsMatch ? "TREFF" : "Ingen treff"}
+                  value={
+                    risk.enrichment.sanctionsMatch ? (
+                      <span className="flex items-center gap-1 font-semibold text-status-critical">
+                        <ShieldAlert aria-hidden className="size-3.5 shrink-0" />
+                        TREFF
+                      </span>
+                    ) : (
+                      "Ingen treff"
+                    )
+                  }
                 />
               </dl>
             ) : (
@@ -434,13 +476,26 @@ function RiskLevelText({ level }: { level: RiskLevel }) {
   return <span className={cn("text-sm font-semibold", className)}>{label}</span>;
 }
 
+/** Icons for risk reasons — always paired with their text label. */
+const RISK_REASON_ICONS: Record<RiskReasonId, { Icon: typeof Flag; className: string }> = {
+  sanctions: { Icon: ShieldAlert, className: "text-status-critical" },
+  insurance: { Icon: ShieldOff, className: "text-status-warning" },
+  flag: { Icon: Flag, className: "text-status-warning" },
+  "no-ais": { Icon: EyeOff, className: "text-status-warning" },
+};
+
+function RiskReasonIcon({ id }: { id: RiskReasonId }) {
+  const { Icon, className } = RISK_REASON_ICONS[id];
+  return <Icon aria-hidden className={cn("mt-0.5 size-3.5 shrink-0", className)} />;
+}
+
 function DataField({
   label,
   value,
   className,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   className?: string;
 }) {
   return (

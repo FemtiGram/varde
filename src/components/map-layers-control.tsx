@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Ruler } from "lucide-react";
+import { useEffect } from "react";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/lib/store";
@@ -17,6 +18,24 @@ export function MapLayersControl() {
   const mapGreyscale = useAppStore((s) => s.mapGreyscale);
   const setMapGreyscale = useAppStore((s) => s.setMapGreyscale);
   const [legendOpen, setLegendOpen] = useState(false);
+  const measuring = useAppStore((s) => s.measuring);
+  const setMeasuring = useAppStore((s) => s.setMeasuring);
+
+  // M toggles measure mode (when not typing)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        (e.key === "m" || e.key === "M") &&
+        !target.closest("input, textarea, [contenteditable]")
+      ) {
+        e.preventDefault();
+        setMeasuring(!useAppStore.getState().measuring);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setMeasuring]);
 
   return (
     <div className="absolute left-3 top-3 flex w-64 flex-col gap-2 rounded-md border bg-card/90 px-3 py-2 backdrop-blur-sm">
@@ -54,6 +73,23 @@ export function MapLayersControl() {
         />
         <span>Gråtonekart</span>
       </label>
+
+      <button
+        type="button"
+        aria-pressed={measuring}
+        onClick={() => setMeasuring(!measuring)}
+        title="Mål peiling og avstand: klikk origo, les av mot peker, klikk igjen for å låse. Esc avslutter. (M)"
+        className={cn(
+          "flex items-center gap-2 rounded-sm border px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-ring",
+          measuring
+            ? "border-selection/60 bg-accent text-foreground"
+            : "border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+        )}
+      >
+        <Ruler aria-hidden className="size-4" />
+        Mål peiling/avstand
+        {measuring && <span className="ml-auto text-xs text-muted-foreground">Esc avslutter</span>}
+      </button>
 
       <button
         type="button"

@@ -10,7 +10,7 @@ import {
   THRESHOLDS,
   ZONES,
 } from "@/lib/config";
-import { projectPosition } from "@/lib/geo";
+import { bearingDegrees, haversineMetres, projectPosition } from "@/lib/geo";
 import { useAppStore } from "@/lib/store";
 import type { Contact, EventSeverity } from "@/lib/types";
 import { formatClockShort } from "@/lib/format";
@@ -63,6 +63,9 @@ export function MapView() {
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
   const corridorLabelsRef = useRef<maplibregl.Marker[]>([]);
   const lastFocusNonce = useRef(0);
+  const measuring = useAppStore((s) => s.measuring);
+  /** Set while measure mode is active so marker clicks snap the EBL to vessels */
+  const measureClickRef = useRef<((lngLat: [number, number]) => void) | null>(null);
 
   // Map bootstrap
   useEffect(() => {
@@ -241,6 +244,35 @@ export function MapView() {
         paint: { "line-color": "#b53f9e", "line-width": 3.5, "line-opacity": 1 },
       });
 
+      // EBL/VRM measure tool geometry
+      map.addSource("measure", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "measure-line",
+        type: "line",
+        source: "measure",
+        filter: ["==", ["get", "kind"], "ebl"],
+        paint: {
+          "line-color": "#1d2630",
+          "line-width": 2,
+          "line-dasharray": [4, 3],
+        },
+      });
+      map.addLayer({
+        id: "measure-ring",
+        type: "line",
+        source: "measure",
+        filter: ["==", ["get", "kind"], "vrm"],
+        paint: {
+          "line-color": "#1d2630",
+          "line-width": 1.2,
+          "line-dasharray": [2, 2],
+          "line-opacity": 0.8,
+        },
+      });
+
       // Projected course vector (dead reckoning) for the selected contact
       map.addSource("projection", {
         type: "geojson",
@@ -287,8 +319,11 @@ export function MapView() {
       });
     });
 
-    // Click on open water clears the selection
-    map.on("click", () => useAppStore.getState().selectContact(null));
+    // Click on open water clears the selection (suspended in measure mode)
+    map.on("click", () => {
+      if (useAppStore.getState().measuring) return;
+      useAppStore.getState().selectContact(null);
+    });
 
     mapRef.current = map;
     const markers = markersRef.current;
@@ -299,6 +334,105 @@ export function MapView() {
       corridorLabelsRef.current = [];
     };
   }, []);
+
+  // EBL/VRM measure mode: click sets origin, cursor reads bearing/range,
+  // second click pins, Esc exits. M toggles (wired in the layers panel too).
+  useEffect(() => {
+    const maybeMap = mapRef.current;
+    if (!maybeMap || !measuring) return;
+    const map: maplibregl.Map = maybeMap;
+
+    let origin: [number, number] | null = null;
+    let pinned = false;
+    const readout = document.createElement("div");
+    readout.style.cssText =
+      "font: 600 12px var(--font-geist-mono); color: var(--foreground); background: rgba(20,28,34,0.88); padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border); pointer-events: none; white-space: nowrap;";
+    const readoutMarker = new maplibregl.Marker({
+      element: readout,
+      anchor: "left",
+      offset: [14, 0],
+    });
+    let readoutAdded = false;
+
+    const source = () =>
+      map.getSource("measure") as maplibregl.GeoJSONSource | undefined;
+
+    function render(cursor: [number, number]) {
+      if (!origin) return;
+      const distNm =
+        haversineMetres(origin, cursor) / 1852;
+      const brg = bearingDegrees(origin, cursor);
+      // VRM ring: 64-point circle at the measured range
+      const ring: [number, number][] = [];
+      for (let i = 0; i <= 64; i++) {
+        ring.push(
+          projectPosition(origin[0], origin[1], (i / 64) * 360, distNm)
+        );
+      }
+      source()?.setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { kind: "ebl" },
+            geometry: { type: "LineString", coordinates: [origin, cursor] },
+          },
+          {
+            type: "Feature",
+            properties: { kind: "vrm" },
+            geometry: { type: "LineString", coordinates: ring },
+          },
+        ],
+      });
+      readout.textContent = `${String(Math.round(brg)).padStart(3, "0")}° · ${distNm.toFixed(2)} nm`;
+      readoutMarker.setLngLat(cursor);
+      if (!readoutAdded) {
+        readoutMarker.addTo(map);
+        readoutAdded = true;
+      }
+    }
+
+    function handleClick(lngLat: [number, number]) {
+      if (!origin || pinned) {
+        // first click, or starting over after a pinned measurement
+        origin = lngLat;
+        pinned = false;
+        source()?.setData({ type: "FeatureCollection", features: [] });
+        if (readoutAdded) {
+          readoutMarker.remove();
+          readoutAdded = false;
+        }
+        return;
+      }
+      pinned = true;
+      render(lngLat);
+    }
+
+    const onClick = (e: maplibregl.MapMouseEvent) =>
+      handleClick([e.lngLat.lng, e.lngLat.lat]);
+    const onMove = (e: maplibregl.MapMouseEvent) => {
+      if (origin && !pinned) render([e.lngLat.lng, e.lngLat.lat]);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") useAppStore.getState().setMeasuring(false);
+    };
+
+    measureClickRef.current = handleClick;
+    map.on("click", onClick);
+    map.on("mousemove", onMove);
+    window.addEventListener("keydown", onKey);
+    map.getCanvas().style.cursor = "crosshair";
+
+    return () => {
+      measureClickRef.current = null;
+      map.off("click", onClick);
+      map.off("mousemove", onMove);
+      window.removeEventListener("keydown", onKey);
+      map.getCanvas().style.cursor = "";
+      readoutMarker.remove();
+      source()?.setData({ type: "FeatureCollection", features: [] });
+    };
+  }, [measuring]);
 
   // Store subscription: sync markers, layers, track line and focus with app state
   useEffect(() => {
@@ -418,6 +552,11 @@ export function MapView() {
             "background: none; border: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;";
           el.addEventListener("click", (ev) => {
             ev.stopPropagation();
+            if (useAppStore.getState().measuring && measureClickRef.current) {
+              const ll = entry!.marker.getLngLat();
+              measureClickRef.current([ll.lng, ll.lat]);
+              return;
+            }
             useAppStore.getState().selectContact(contact.id);
           });
           const marker = new maplibregl.Marker({ element: el, anchor: "center" })

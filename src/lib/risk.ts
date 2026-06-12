@@ -13,73 +13,75 @@ import type { Contact, VesselEnrichment } from "./types";
  */
 
 /** MID → flag state (subset relevant to Norwegian waters + common registries). */
-const MID_FLAGS: Record<number, string> = {
-  209: "Kypros",
-  210: "Kypros",
-  211: "Tyskland",
-  212: "Kypros",
-  215: "Malta",
-  219: "Danmark",
-  220: "Danmark",
-  224: "Spania",
-  226: "Frankrike",
-  227: "Frankrike",
-  228: "Frankrike",
-  229: "Malta",
-  230: "Finland",
-  231: "Færøyene",
-  232: "Storbritannia",
-  233: "Storbritannia",
-  234: "Storbritannia",
-  235: "Storbritannia",
-  244: "Nederland",
-  245: "Nederland",
-  246: "Nederland",
-  248: "Malta",
-  249: "Malta",
-  255: "Portugal (Madeira)",
-  256: "Malta",
-  257: "Norge",
-  258: "Norge",
-  259: "Norge",
-  265: "Sverige",
-  266: "Sverige",
-  273: "Russland",
-  275: "Latvia",
-  276: "Estland",
-  277: "Litauen",
-  304: "Antigua og Barbuda",
-  305: "Antigua og Barbuda",
-  311: "Bahamas",
-  314: "Barbados",
-  351: "Panama",
-  352: "Panama",
-  353: "Panama",
-  354: "Panama",
-  355: "Panama",
-  370: "Panama",
-  371: "Panama",
-  372: "Panama",
-  373: "Panama",
-  457: "Mongolia",
-  477: "Hongkong",
-  511: "Palau",
-  518: "Cookøyene",
-  538: "Marshalløyene",
-  563: "Singapore",
-  564: "Singapore",
-  566: "Singapore",
-  613: "Kamerun",
-  616: "Komorene",
-  626: "Gabon",
-  636: "Liberia",
-  667: "Sierra Leone",
-  677: "Tanzania",
+const MID_FLAGS: Record<number, { name: string; iso: string }> = {
+  209: { name: "Kypros", iso: "cy" },
+  210: { name: "Kypros", iso: "cy" },
+  211: { name: "Tyskland", iso: "de" },
+  212: { name: "Kypros", iso: "cy" },
+  215: { name: "Malta", iso: "mt" },
+  219: { name: "Danmark", iso: "dk" },
+  220: { name: "Danmark", iso: "dk" },
+  224: { name: "Spania", iso: "es" },
+  226: { name: "Frankrike", iso: "fr" },
+  227: { name: "Frankrike", iso: "fr" },
+  228: { name: "Frankrike", iso: "fr" },
+  229: { name: "Malta", iso: "mt" },
+  230: { name: "Finland", iso: "fi" },
+  231: { name: "Færøyene", iso: "fo" },
+  232: { name: "Storbritannia", iso: "gb" },
+  233: { name: "Storbritannia", iso: "gb" },
+  234: { name: "Storbritannia", iso: "gb" },
+  235: { name: "Storbritannia", iso: "gb" },
+  244: { name: "Nederland", iso: "nl" },
+  245: { name: "Nederland", iso: "nl" },
+  246: { name: "Nederland", iso: "nl" },
+  248: { name: "Malta", iso: "mt" },
+  249: { name: "Malta", iso: "mt" },
+  255: { name: "Portugal (Madeira)", iso: "pt" },
+  256: { name: "Malta", iso: "mt" },
+  257: { name: "Norge", iso: "no" },
+  258: { name: "Norge", iso: "no" },
+  259: { name: "Norge", iso: "no" },
+  265: { name: "Sverige", iso: "se" },
+  266: { name: "Sverige", iso: "se" },
+  273: { name: "Russland", iso: "ru" },
+  275: { name: "Latvia", iso: "lv" },
+  276: { name: "Estland", iso: "ee" },
+  277: { name: "Litauen", iso: "lt" },
+  304: { name: "Antigua og Barbuda", iso: "ag" },
+  305: { name: "Antigua og Barbuda", iso: "ag" },
+  311: { name: "Bahamas", iso: "bs" },
+  314: { name: "Barbados", iso: "bb" },
+  351: { name: "Panama", iso: "pa" },
+  352: { name: "Panama", iso: "pa" },
+  353: { name: "Panama", iso: "pa" },
+  354: { name: "Panama", iso: "pa" },
+  355: { name: "Panama", iso: "pa" },
+  370: { name: "Panama", iso: "pa" },
+  371: { name: "Panama", iso: "pa" },
+  372: { name: "Panama", iso: "pa" },
+  373: { name: "Panama", iso: "pa" },
+  457: { name: "Mongolia", iso: "mn" },
+  477: { name: "Hongkong", iso: "hk" },
+  511: { name: "Palau", iso: "pw" },
+  518: { name: "Cookøyene", iso: "ck" },
+  538: { name: "Marshalløyene", iso: "mh" },
+  563: { name: "Singapore", iso: "sg" },
+  564: { name: "Singapore", iso: "sg" },
+  566: { name: "Singapore", iso: "sg" },
+  613: { name: "Kamerun", iso: "cm" },
+  616: { name: "Komorene", iso: "km" },
+  626: { name: "Gabon", iso: "ga" },
+  636: { name: "Liberia", iso: "lr" },
+  667: { name: "Sierra Leone", iso: "sl" },
+  677: { name: "Tanzania", iso: "tz" },
 };
 
 export interface FlagInfo {
   mid: number;
   country: string | null;
+  /** ISO 3166-1 alpha-2 — drives the flag icon */
+  iso: string | null;
   risky: boolean;
 }
 
@@ -87,9 +89,11 @@ export interface FlagInfo {
 export function flagFromMmsi(mmsi: number | null): FlagInfo | null {
   if (mmsi == null || mmsi < 100_000_000) return null;
   const mid = Math.floor(mmsi / 1_000_000);
+  const entry = MID_FLAGS[mid];
   return {
     mid,
-    country: MID_FLAGS[mid] ?? null,
+    country: entry?.name ?? null,
+    iso: entry?.iso ?? null,
     risky: RISKY_FLAG_MIDS.has(mid),
   };
 }
@@ -109,10 +113,17 @@ export function getEnrichment(contact: Contact): VesselEnrichment | null {
 
 export type RiskLevel = "lav" | "forhøyet" | "høy";
 
+export type RiskReasonId = "no-ais" | "flag" | "sanctions" | "insurance";
+
+export interface RiskReason {
+  id: RiskReasonId;
+  label: string;
+}
+
 export interface RiskProfile {
   level: RiskLevel;
   /** Operator-readable reasons behind the level (Norwegian) */
-  reasons: string[];
+  reasons: RiskReason[];
   flag: FlagInfo | null;
   enrichment: VesselEnrichment | null;
 }
@@ -120,23 +131,26 @@ export interface RiskProfile {
 export function riskProfile(contact: Contact): RiskProfile {
   const flag = flagFromMmsi(contact.mmsi);
   const enrichment = getEnrichment(contact);
-  const reasons: string[] = [];
+  const reasons: RiskReason[] = [];
   let points = 0;
 
   if (contact.source !== "ais") {
-    reasons.push("Kontakt uten AIS-identitet");
+    reasons.push({ id: "no-ais", label: "Kontakt uten AIS-identitet" });
     points += 2;
   }
   if (flag?.risky) {
-    reasons.push(`Flaggstat ${flag.country ?? flag.mid} (forenklet risikoliste)`);
+    reasons.push({
+      id: "flag",
+      label: `Flaggstat ${flag.country ?? flag.mid} (forenklet risikoliste)`,
+    });
     points += 1;
   }
   if (enrichment?.sanctionsMatch) {
-    reasons.push("Treff i sanksjonsliste (illustrativ)");
+    reasons.push({ id: "sanctions", label: "Treff i sanksjonsliste (illustrativ)" });
     points += 2;
   }
   if (enrichment?.insurance === "utløpt") {
-    reasons.push("Forsikring utløpt (illustrativ)");
+    reasons.push({ id: "insurance", label: "Forsikring utløpt (illustrativ)" });
     points += 1;
   }
 

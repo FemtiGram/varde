@@ -52,11 +52,14 @@ interface AppState {
   sheetHeight: number;
   /** Greyscale basemap — desaturated chart so vessels and overlays pop */
   mapGreyscale: boolean;
+  /** EBL/VRM measure mode: click origin, read bearing/range to cursor */
+  measuring: boolean;
 
   setMode: (mode: DataMode) => void;
   setView: (view: "map" | "board" | "journal") => void;
   setSheetHeight: (px: number) => void;
   setMapGreyscale: (on: boolean) => void;
+  setMeasuring: (on: boolean) => void;
   setLiveStatus: (status: LiveStatus) => void;
   setShowInfrastructure: (show: boolean) => void;
   restartScenario: () => void;
@@ -180,6 +183,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   view: "map",
   sheetHeight: 360,
   mapGreyscale: true,
+  measuring: false,
 
   setView: (view) => set({ view }),
 
@@ -187,6 +191,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ sheetHeight: Math.min(520, Math.max(220, Math.round(px))) }),
 
   setMapGreyscale: (mapGreyscale) => set({ mapGreyscale }),
+
+  setMeasuring: (measuring) => set({ measuring }),
 
   setMode: (mode) => {
     if (mode === get().mode) return;
