@@ -8,6 +8,8 @@ The UX thesis: a scene with hundreds of vessels is useless if everything has
 equal weight. The job of the interface is to answer one question fast — *which
 vessel needs a decision right now, and why?*
 
+**[Live demo](https://varde-silk.vercel.app)** · **[Case study](https://varde-silk.vercel.app/case)** · **[Design system](https://varde-silk.vercel.app/design-system)**
+
 > Portfolio piece, built solo. The event/anomaly logic is deliberately simple
 > and clearly labelled where illustrative; this is a UX exploration, not an
 > operational or tested system.
@@ -63,6 +65,8 @@ runs in Scenario mode, which is fully functional.
   (loiter-in-corridor, predicted approach) signatures.
 - **Design system** at `/design-system` — tokens, type, components, with live
   WCAG contrast values and the Laws of UX applied.
+- **Case study** at `/case` — the design rationale: the two real threats, the
+  honesty rules, the explainable scoring, and the ops-room borrowings.
 
 ## Data licence
 

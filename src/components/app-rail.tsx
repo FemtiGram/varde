@@ -1,6 +1,12 @@
 "use client";
 
-import { Map as MapIcon, Palette, ScrollText, SquareKanban } from "lucide-react";
+import {
+  BookOpen,
+  Map as MapIcon,
+  Palette,
+  ScrollText,
+  SquareKanban,
+} from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -59,19 +65,33 @@ export function AppRail() {
         >
           <ScrollText aria-hidden className="size-5" />
         </RailButton>
-        <Separator className="my-1 w-7" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/design-system"
-              aria-label="Designsystem"
-              className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              <Palette aria-hidden className="size-5" />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Designsystem</TooltipContent>
-        </Tooltip>
+        <div className="mt-auto flex flex-col items-center gap-1">
+          <Separator className="my-1 w-7" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/case"
+                aria-label="Om prosjektet (case study)"
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <BookOpen aria-hidden className="size-5" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">Om prosjektet</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/design-system"
+                aria-label="Designsystem"
+                className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <Palette aria-hidden className="size-5" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">Designsystem</TooltipContent>
+          </Tooltip>
+        </div>
       </nav>
     </TooltipProvider>
   );
